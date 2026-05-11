@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(grep -iE \"\\\\.\\(jpg|jpeg|png|webp\\)$\")",
+      "WebFetch(domain:whydontyouopenit.netlify.app)",
+      "Bash(curl *)",
+      "Bash(git --version)",
+      "Bash(gh --version)"
+    ]
+  }
+}

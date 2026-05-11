@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escape Room – Ocean Cave (Day)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sky-top: #4ab8f0;
+    --sky-mid: #74cef5;
+    --sky-horizon: #b8e8fa;
+    --ocean-deep: #0e6fa8;
+    --ocean-mid: #1a8ac4;
+    --ocean-light: #3aa8e0;
+    --sand: #e8d5a0;
+    --sand-dark: #c8b070;
+    --rock: #8a7860;
+    --rock-dark: #5a4e3c;
+    --rock-light: #b0a080;
+    --cave-dark: #1a0e0a;
+    --digit-glow: #00aaff;
+    --digit-ok: #00cc66;
+    --danger: #ff3333;
+    --foam: rgba(255,255,255,0.7);
+  }
+
+  body {
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--sky-top);
+    user-select: none;
+  }
+
+  #scene {
+    position: relative;
+    width: 100%; height: 100%;
+  }
+
+  /* ── SKY ── */
+  #sky {
+    position: absolute; inset: 0 0 44% 0;
+    background: linear-gradient(180deg,
+      #2a9ae0 0%,
+      #4ab8f0 30%,
+      #7ed4f8 70%,
+      #c2ecff 100%);
+  }
+
+  /* SUN */
+  #sun {
+    position: absolute;
+    top: 9%; left: 12%;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #fff9c0 0%, #ffe840 40%, #ffb800 100%);
+    box-shadow:
+      0 0 0 12px rgba(255,220,50,0.15),
+      0 0 0 30px rgba(255,200,30,0.08),
+      0 0 60px 20px rgba(255,180,0,0.2),
+      0 0 120px 40px rgba(255,160,0,0.1);
+    animation: sunPulse 6s ease-in-out infinite alternate;
+  }
+  @keyframes sunPulse {
+    from { box-shadow: 0 0 0 12px rgba(255,220,50,0.15), 0 0 0 30px rgba(255,200,30,0.08), 0 0 60px 20px rgba(255,180,0,0.2), 0 0 120px 40px rgba(255,160,0,0.1); }
+    to   { box-shadow: 0 0 0 18px rgba(255,220,50,0.18), 0 0 0 40px rgba(255,200,30,0.1),  0 0 80px 30px rgba(255,180,0,0.25), 0 0 160px 60px rgba(255,160,0,0.12); }
+  }
+
+  /* SUN RAYS */
+  #sun-rays {
+    position: absolute;
+    top: 9%; left: 12%;
+    width: 80px; height: 80px;
+    animation: raysRotate 20s linear infinite;
+  }
+  .ray {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 2px;
+    background: linear-gradient(to top, rgba(255,220,50,0.5), transparent);
+    transform-origin: bottom center;
+    border-radius: 1px;
+  }
+  @keyframes raysRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* CLOUDS */
+  .cloud {
+    position: absolute;
+    animation: cloudDrift var(--dur) linear infinite;
+  }
+  .cloud-body {
+    background: white;
+    border-radius: 50px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    position: relative;
+  }
+  .cloud-body::before, .cloud-body::after {
+    content: '';
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+  }
+  @keyframes cloudDrift {
+    from { transform: translateX(110vw); }
+    to   { transform: translateX(-30vw); }
+  }
+
+  /* SUN LIGHT SHAFT on ocean */
+  #sun-shaft {
+    position: absolute;
+    top: 46%; left: 8%;
+    width: 120px;
+    height: 50vh;
+    background: linear-gradient(180deg, rgba(255,230,100,0.25) 0%, transparent 100%);
+    transform: skewX(-12deg);
+    filter: blur(18px);
+    pointer-events: none;
+    animation: shaftWave 5s ease-in-out infinite alternate;
+  }
+  @keyframes shaftWave {
+    from { opacity: 0.6; transform: skewX(-12deg) scaleX(0.9); }
+    to   { opacity: 1;   transform: skewX(-10deg) scaleX(1.1); }
+  }
+
+  /* ── OCEAN ── */
+  #ocean {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 46%;
+    overflow: hidden;
+  }
+  #ocean-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg,
+      #3ab8e8 0%,
+      #1a90c0 25%,
+      #0e6090 55%,
+      #083060 100%);
+  }
+
+  /* Ocean sparkles */
+  .sparkle {
+    position: absolute;
+    width: 3px; height: 3px;
+    background: white;
+    border-radius: 50%;
+    animation: sparkleAnim var(--dur) ease-in-out infinite;
+    animation-delay: var(--delay);
+  }
+  @keyframes sparkleAnim {
+    0%,100% { opacity: 0; transform: scale(0.5); }
+    50%     { opacity: 0.9; transform: scale(1.5); }
+  }
+
+  /* WAVE ROWS */
+  .wave-row {
+    position: absolute;
+    left: -10%; right: -10%;
+    height: 32px;
+    animation: waveScroll var(--speed) linear infinite;
+    animation-delay: var(--delay);
+  }
+  .wave-row svg { width: 200%; height: 100%; }
+  @keyframes waveScroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  /* FOAM STREAKS */
+  .foam-streak {
+    position: absolute;
+    height: 2px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.6);
+    filter: blur(1px);
+    animation: foamDrift var(--dur) ease-in-out infinite alternate;
+    animation-delay: var(--delay);
+  }
+  @keyframes foamDrift {
+    from { transform: translateX(-10px) scaleX(0.8); opacity: 0.4; }
+    to   { transform: translateX(10px)  scaleX(1.2); opacity: 0.8; }
+  }
+
+  /* ── SAND / SHORE ── */
+  #shore {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 12%;
+    overflow: hidden;
+  }
+  #shore-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, #d4c090 0%, #c8b070 50%, #b89850 100%);
+  }
+  /* wet sand shine */
+  #wet-sand {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 35%;
+    background: linear-gradient(180deg, rgba(180,210,230,0.45) 0%, transparent 100%);
+  }
+
+  /* ── CLIFFS ── */
+  #cliffs {
+    position: absolute;
+    bottom: 44%;
+    left: 0; right: 0;
+    height: 340px;
+    pointer-events: none;
+  }
+  #cliff-left {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 33%;
+  }
+  #cliff-right {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 33%;
+  }
+  #cliff-center {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+  }
+
+  /* ── SEAGULLS ── */
+  .gull {
+    position: absolute;
+    animation: gullFly var(--dur) linear infinite;
+    animation-delay: var(--delay);
+  }
+  .gull svg { width: var(--size); height: auto; }
+  @keyframes gullFly {
+    0%   { transform: translateX(-120px) translateY(0); }
+    25%  { transform: translateX(25vw)  translateY(-18px); }
+    50%  { transform: translateX(50vw)  translateY(5px); }
+    75%  { transform: translateX(75vw)  translateY(-12px); }
+    100% { transform: translateX(110vw) translateY(0); }
+  }
+
+  /* ── CAVE & DOOR ── */
+  #cave-wrap {
+    position: absolute;
+    bottom: 43%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #cave-arch {
+    position: relative;
+    width: 160px; height: 180px;
+  }
+  .cave-opening {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 122px; height: 152px;
+    background: radial-gradient(ellipse at 50% 30%, #2a1a10 0%, #120808 50%, #060402 100%);
+    border-radius: 61px 61px 0 0;
+    box-shadow: inset 0 0 40px 10px rgba(0,0,0,0.9), 0 0 15px 4px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+  /* Subtle cool cave interior */
+  .cave-interior {
+    position: absolute;
+    bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 70px; height: 40px;
+    background: radial-gradient(ellipse, rgba(80,160,220,0.12) 0%, transparent 70%);
+    filter: blur(8px);
+  }
+
+  /* DOOR */
+  #door {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 80px; height: 112px;
+    background: linear-gradient(160deg, #6b4a28 0%, #4a3018 45%, #382210 100%);
+    border-radius: 40px 40px 0 0;
+    border: 3px solid #8a6030;
+    border-bottom: none;
+    cursor: pointer;
+    transition: filter 0.3s;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.6), 3px 0 10px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  #door::before {
+    content: '';
+    position: absolute;
+    top: 8px; left: 8px; right: 8px; bottom: 0;
+    border: 1.5px solid rgba(255,200,120,0.2);
+    border-radius: 35px 35px 0 0;
+  }
+  #door::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      180deg,
+      transparent 0px, transparent 11px,
+      rgba(0,0,0,0.15) 11px, rgba(0,0,0,0.15) 12px
+    );
+    border-radius: inherit;
+  }
+  #door:hover { filter: brightness(1.2); }
+
+  .hinge {
+    position: absolute;
+    left: 7px;
+    width: 11px; height: 17px;
+    background: linear-gradient(90deg, #a07840, #d4aa60, #a07840);
+    border-radius: 2px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    z-index: 2;
+  }
+  .hinge:nth-child(1) { top: 20px; }
+  .hinge:nth-child(2) { top: 56px; }
+  .hinge:nth-child(3) { top: 90px; }
+
+  /* PADLOCK */
+  #padlock {
+    position: absolute;
+    top: 30px; right: 10px;
+    width: 24px; height: 28px;
+    cursor: pointer;
+    z-index: 5;
+    transition: transform 0.2s;
+  }
+  #padlock:hover { transform: scale(1.15); }
+  #padlock-shackle {
+    position: absolute;
+    top: 0; left: 3px;
+    width: 18px; height: 14px;
+    border: 3px solid #c8a030;
+    border-bottom: none;
+    border-radius: 9px 9px 0 0;
+    transition: top 0.4s ease, transform 0.4s ease, border-color 0.3s;
+  }
+  #padlock-body {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 24px; height: 18px;
+    background: linear-gradient(135deg, #e0b840, #a07820, #e0b840);
+    border-radius: 3px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #padlock-body::after {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #3a2800;
+    box-shadow: 0 2px 0 #2a1800;
+  }
+  #padlock.unlocked #padlock-shackle {
+    top: -9px;
+    transform: rotate(30deg);
+    border-color: var(--digit-ok);
+  }
+  #padlock.unlocked #padlock-body {
+    background: linear-gradient(135deg, #44ee88, #00aa44, #44ee88);
+  }
+  #door.open {
+    animation: doorOpen 1.2s ease forwards;
+  }
+  @keyframes doorOpen {
+    0%   { transform: translateX(-50%) perspective(200px) rotateY(0deg); }
+    100% { transform: translateX(-85%) perspective(200px) rotateY(-72deg); opacity: 0.3; }
+  }
+
+  #click-hint {
+    position: absolute;
+    bottom: -28px; left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 10px;
+    color: rgba(40,80,120,0.5);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: hintPulse 2.5s ease-in-out infinite;
+  }
+  @keyframes hintPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+  /* SCENE LABEL */
+  #scene-label {
+    position: absolute;
+    bottom: 48%; left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 5px;
+    color: rgba(60,100,140,0.35);
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  /* ── LOCK MODAL ── */
+  #lock-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(10,40,70,0.55);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+  }
+  #lock-overlay.visible { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  #lock-modal {
+    position: relative;
+    width: 300px;
+    background: linear-gradient(160deg, #f0ede6 0%, #e8e2d8 100%);
+    border: 1px solid rgba(160,130,80,0.4);
+    border-radius: 16px;
+    padding: 32px 28px 28px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.6),
+      0 20px 60px rgba(10,40,80,0.4),
+      0 4px 20px rgba(10,40,80,0.2);
+    animation: modalIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes modalIn {
+    from { transform: scale(0.8) translateY(20px); opacity: 0; }
+    to   { transform: scale(1) translateY(0);      opacity: 1; }
+  }
+  #lock-modal::before, #lock-modal::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    border-color: rgba(160,130,80,0.5);
+    border-style: solid;
+  }
+  #lock-modal::before { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+  #lock-modal::after  { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+
+  #lock-modal h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 4px;
+    color: rgba(80,55,20,0.85);
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  #lock-modal .subtitle {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(80,100,140,0.5);
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  /* DISPLAY */
+  #code-display {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .digit-box {
+    width: 48px; height: 58px;
+    background: #1a2a3a;
+    border: 1.5px solid #2a3e54;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 28px;
+    color: #40c8ff;
+    text-shadow: 0 0 10px rgba(64,200,255,0.8), 0 0 20px rgba(64,200,255,0.3);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.5), 0 0 6px rgba(64,200,255,0.08);
+    transition: all 0.15s;
+    position: relative; overflow: hidden;
+  }
+  .digit-box.active {
+    border-color: rgba(64,200,255,0.5);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.5), 0 0 12px rgba(64,200,255,0.25);
+  }
+  .digit-box.active::after {
+    content: '';
+    position: absolute;
+    bottom: 8px; left: 50%; transform: translateX(-50%);
+    width: 20px; height: 2px;
+    background: #40c8ff;
+    border-radius: 1px;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+  .digit-box.error {
+    border-color: rgba(255,60,60,0.7);
+    color: #ff4444;
+    text-shadow: 0 0 10px rgba(255,68,68,0.8);
+    animation: shake 0.4s ease;
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  .digit-box.success {
+    border-color: rgba(0,200,100,0.8);
+    color: #00dd77;
+    text-shadow: 0 0 10px rgba(0,200,100,0.8);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.5), 0 0 16px rgba(0,200,100,0.3);
+    animation: successPulse 0.5s ease;
+  }
+  @keyframes successPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+  #status-msg {
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 2px;
+    height: 14px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    transition: color 0.3s;
+  }
+  #status-msg.error   { color: #e03030; }
+  #status-msg.success { color: #00aa55; }
+  #status-msg.idle    { color: rgba(80,100,140,0.4); }
+
+  /* KEYPAD */
+  #keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .key {
+    height: 52px;
+    background: linear-gradient(160deg, #ffffff, #f0ece4);
+    border: 1px solid rgba(160,130,80,0.3);
+    border-radius: 8px;
+    color: #3a3020;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 0 rgba(160,130,80,0.25), inset 0 1px 0 rgba(255,255,255,0.8);
+    position: relative; overflow: hidden;
+  }
+  .key:hover {
+    background: linear-gradient(160deg, #fff8ee, #f5edd8);
+    border-color: rgba(160,130,80,0.6);
+    box-shadow: 0 2px 0 rgba(160,130,80,0.25), 0 0 12px rgba(200,160,50,0.12);
+    color: #1a1000;
+  }
+  .key:active, .key.pressed {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 rgba(160,130,80,0.2);
+    background: #ede8dc;
+  }
+  .key.clear-key { color: #c03020; border-color: rgba(200,60,40,0.2); }
+  .key.clear-key:hover { border-color: rgba(200,60,40,0.5); }
+  .key.enter-key {
+    grid-column: span 2;
+    color: #0077cc;
+    border-color: rgba(0,120,200,0.2);
+    font-size: 13px;
+    letter-spacing: 3px;
+  }
+  .key.enter-key:hover { border-color: rgba(0,120,200,0.5); color: #005599; }
+
+  #close-btn {
+    position: absolute;
+    top: 12px; right: 14px;
+    width: 24px; height: 24px;
+    border: 1px solid rgba(160,130,80,0.3);
+    border-radius: 50%;
+    background: transparent;
+    color: rgba(100,80,40,0.5);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    line-height: 1; padding-bottom: 1px;
+  }
+  #close-btn:hover { border-color: rgba(160,130,80,0.7); color: rgba(100,80,40,0.9); background: rgba(160,130,80,0.1); }
+
+  .hint-row {
+    text-align: center;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: rgba(80,100,140,0.4);
+    text-transform: uppercase;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0,0,0,0.06);
+  }
+
+  /* ── SUCCESS SCREEN ── */
+  #success-screen {
+    display: none;
+    position: fixed; inset: 0;
+    z-index: 200;
+    background: radial-gradient(ellipse at 50% 60%, rgba(200,240,255,0.97) 0%, rgba(140,210,250,0.98) 100%);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+    animation: fadeIn 1s ease;
+  }
+  #success-screen.visible { display: flex; }
+
+  .success-icon {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 2px solid #0088cc;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    box-shadow: 0 0 40px rgba(0,140,220,0.4), inset 0 0 20px rgba(0,140,220,0.08);
+    background: rgba(255,255,255,0.6);
+    animation: iconPop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.5s both;
+  }
+  @keyframes iconPop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  #success-screen h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    letter-spacing: 8px;
+    color: #0066aa;
+    text-shadow: 0 2px 20px rgba(0,120,200,0.3);
+    text-transform: uppercase;
+    animation: fadeInUp 0.6s ease 0.9s both;
+  }
+  #success-screen p {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: rgba(0,80,140,0.6);
+    text-transform: uppercase;
+    animation: fadeInUp 0.6s ease 1.1s both;
+  }
+  #try-again-btn {
+    margin-top: 10px;
+    padding: 10px 28px;
+    background: white;
+    border: 1.5px solid rgba(0,120,200,0.4);
+    border-radius: 4px;
+    color: #0077cc;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 12px rgba(0,100,200,0.15);
+    animation: fadeInUp 0.6s ease 1.3s both;
+  }
+  #try-again-btn:hover { background: #0077cc; color: white; border-color: #0077cc; }
+  @keyframes fadeInUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<div id="scene">
+
+  <!-- Sky -->
+  <div id="sky"></div>
+
+  <!-- Sun -->
+  <div id="sun"></div>
+  <div id="sun-rays" id="sun-rays"></div>
+
+  <!-- Clouds (injected by JS) -->
+
+  <!-- Sun light shaft on ocean -->
+  <div id="sun-shaft"></div>
+
+  <!-- Ocean -->
+  <div id="ocean">
+    <div id="ocean-bg"></div>
+    <!-- waves & sparkles injected by JS -->
+  </div>
+
+  <!-- Shore -->
+  <div id="shore">
+    <div id="shore-bg"></div>
+    <div id="wet-sand"></div>
+  </div>
+
+  <!-- Cliffs -->
+  <div id="cliffs">
+    <div id="cliff-left">
+      <svg viewBox="0 0 300 340" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="rock-grad-l" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#4a3e2e"/>
+            <stop offset="50%" stop-color="#6a5a40"/>
+            <stop offset="100%" stop-color="#8a7858"/>
+          </linearGradient>
+          <linearGradient id="rock-hi-l" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="rgba(255,220,160,0.25)"/>
+            <stop offset="100%" stop-color="transparent"/>
+          </linearGradient>
+        </defs>
+        <polygon points="0,340 0,190 35,145 70,170 110,95 148,130 180,72 210,110 250,65 300,95 300,340" fill="url(#rock-grad-l)"/>
+        <!-- shadow side -->
+        <polygon points="0,340 0,220 30,200 60,240 95,215 120,250 155,225 190,260 220,235 270,270 300,250 300,340" fill="#2e2618" opacity="0.5"/>
+        <!-- sunlit top edge -->
+        <polyline points="35,145 70,130 110,95 148,118 180,72 210,100 250,65" stroke="rgba(255,220,150,0.3)" stroke-width="2" fill="none"/>
+      </svg>
+    </div>
+
+    <div id="cliff-right">
+      <svg viewBox="0 0 300 340" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="rock-grad-r" x1="1" y1="0" x2="0" y2="0">
+            <stop offset="0%" stop-color="#4a3e2e"/>
+            <stop offset="50%" stop-color="#6a5a40"/>
+            <stop offset="100%" stop-color="#7a6848"/>
+          </linearGradient>
+        </defs>
+        <polygon points="300,340 300,190 265,140 230,165 190,90 152,125 120,68 90,105 50,60 0,90 0,340" fill="url(#rock-grad-r)"/>
+        <polygon points="300,340 300,225 270,205 240,245 205,220 175,255 145,228 110,262 80,238 30,272 0,252 0,340" fill="#2e2618" opacity="0.5"/>
+        <polyline points="265,140 230,120 190,90 152,110 120,68 90,95 50,60" stroke="rgba(255,220,150,0.3)" stroke-width="2" fill="none"/>
+      </svg>
+    </div>
+
+    <div id="cliff-center">
+      <svg viewBox="0 0 400 340" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="rock-grad-c" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#7a6848"/>
+            <stop offset="60%" stop-color="#5a4a30"/>
+            <stop offset="100%" stop-color="#3a2e1c"/>
+          </linearGradient>
+        </defs>
+        <polygon points="0,340 0,210 38,190 68,225 105,192 136,215 140,165 175,118 195,105 205,105 225,118 260,165 264,215 295,192 326,225 362,190 400,210 400,340" fill="url(#rock-grad-c)"/>
+        <!-- cave shadow -->
+        <ellipse cx="200" cy="330" rx="72" ry="82" fill="#1a0e08"/>
+        <!-- sunlit top -->
+        <polyline points="38,190 68,178 105,165 136,185 175,118" stroke="rgba(255,220,150,0.25)" stroke-width="1.5" fill="none"/>
+        <polyline points="225,118 260,152 295,172 326,190 362,178 400,190" stroke="rgba(255,220,150,0.2)" stroke-width="1.5" fill="none"/>
+        <!-- moss patches -->
+        <ellipse cx="80" cy="210" rx="18" ry="8" fill="rgba(80,110,40,0.4)"/>
+        <ellipse cx="320" cy="205" rx="14" ry="6" fill="rgba(80,110,40,0.3)"/>
+        <ellipse cx="155" cy="190" rx="10" ry="5" fill="rgba(80,110,40,0.35)"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Scene label -->
+  <div id="scene-label">The Crestmoor Caves</div>
+
+  <!-- Cave & Door -->
+  <div id="cave-wrap">
+    <div id="cave-arch">
+      <div class="cave-opening">
+        <div class="cave-interior"></div>
+      </div>
+
+      <div id="door" onclick="openLockModal()" title="Examine the door">
+        <div class="hinge"></div>
+        <div class="hinge"></div>
+        <div class="hinge"></div>
+        <div id="padlock" onclick="openLockModal()">
+          <div id="padlock-shackle"></div>
+          <div id="padlock-body"></div>
+        </div>
+      </div>
+    </div>
+    <div id="click-hint">click to examine</div>
+  </div>
+
+</div><!-- /scene -->
+
+<!-- ── LOCK MODAL ── -->
+<div id="lock-overlay" onclick="overlayClick(event)">
+  <div id="lock-modal">
+    <button id="close-btn" onclick="closeLockModal()">✕</button>
+    <h2>Combination Lock</h2>
+    <div class="subtitle">Enter 4-digit code</div>
+
+    <div id="code-display">
+      <div class="digit-box active" id="d0">_</div>
+      <div class="digit-box" id="d1">_</div>
+      <div class="digit-box" id="d2">_</div>
+      <div class="digit-box" id="d3">_</div>
+    </div>
+
+    <div id="status-msg" class="idle">· · · · · · · · · ·</div>
+
+    <div id="keypad">
+      <button class="key" onclick="pressKey('1')">1</button>
+      <button class="key" onclick="pressKey('2')">2</button>
+      <button class="key" onclick="pressKey('3')">3</button>
+      <button class="key" onclick="pressKey('4')">4</button>
+      <button class="key" onclick="pressKey('5')">5</button>
+      <button class="key" onclick="pressKey('6')">6</button>
+      <button class="key" onclick="pressKey('7')">7</button>
+      <button class="key" onclick="pressKey('8')">8</button>
+      <button class="key" onclick="pressKey('9')">9</button>
+      <button class="key clear-key" onclick="clearKey()">⌫</button>
+      <button class="key" onclick="pressKey('0')">0</button>
+      <button class="key enter-key" onclick="submitCode()">ENTER</button>
+    </div>
+
+    <div class="hint-row">The tide chart holds the answer</div>
+  </div>
+</div>
+
+<!-- ── SUCCESS SCREEN ── -->
+<div id="success-screen">
+  <div class="success-icon">⚓</div>
+  <h1>Access Granted</h1>
+  <p>The cave door swings open…</p>
+  <button id="try-again-btn" onclick="resetGame()">Reset Puzzle</button>
+</div>
+
+<script>
+  const SECRET_CODE = '4728';
+  const MAX_DIGITS   = 4;
+  let currentInput = '';
+  let solved = false;
+
+  // ── SUN RAYS ──
+  const raysEl = document.getElementById('sun-rays');
+  const RAY_COUNT = 12;
+  for (let i = 0; i < RAY_COUNT; i++) {
+    const r = document.createElement('div');
+    r.className = 'ray';
+    const len = 50 + Math.random() * 80;
+    r.style.cssText = `
+      height:${len}px;
+      left:50%; top:50%;
+      transform-origin: bottom center;
+      transform: rotate(${(i/RAY_COUNT)*360}deg) translateX(-50%);
+      opacity:${0.4 + Math.random()*0.3};
+    `;
+    raysEl.appendChild(r);
+  }
+
+  // ── CLOUDS ──
+  const cloudData = [
+    { top:'8%', size:'120px', dur:'60s', delay:'0s', opacity:0.95 },
+    { top:'14%', size:'80px',  dur:'80s', delay:'-25s', opacity:0.85 },
+    { top:'6%', size:'160px',  dur:'100s', delay:'-55s', opacity:0.9 },
+    { top:'18%', size:'60px',  dur:'70s', delay:'-38s', opacity:0.7 },
+  ];
+  cloudData.forEach(d => {
+    const c = document.createElement('div');
+    c.className = 'cloud';
+    c.style.cssText = `top:${d.top}; --dur:${d.dur}; --delay:${d.delay}; transform: translateX(-30vw); animation-delay:${d.delay}; opacity:${d.opacity};`;
+    const w = parseInt(d.size);
+    c.innerHTML = `<div class="cloud-body" style="width:${w}px;height:${w*0.38}px;">
+      <div style="position:absolute;width:${w*0.45}px;height:${w*0.45}px;background:white;border-radius:50%;top:-${w*0.2}px;left:${w*0.15}px;"></div>
+      <div style="position:absolute;width:${w*0.3}px;height:${w*0.3}px;background:white;border-radius:50%;top:-${w*0.1}px;left:${w*0.5}px;"></div>
+    </div>`;
+    document.getElementById('scene').appendChild(c);
+  });
+
+  // ── SEAGULLS ──
+  const gullPositions = [
+    { top:'22%', size:'28px', dur:'28s', delay:'0s' },
+    { top:'17%', size:'20px', dur:'40s', delay:'-14s' },
+    { top:'26%', size:'16px', dur:'55s', delay:'-28s' },
+  ];
+  gullPositions.forEach(g => {
+    const el = document.createElement('div');
+    el.className = 'gull';
+    el.style.cssText = `top:${g.top}; --dur:${g.dur}; --size:${g.size}; --delay:${g.delay}; animation-delay:${g.delay};`;
+    // Simple seagull M-shape SVG
+    el.innerHTML = `<svg viewBox="0 0 40 20" xmlns="http://www.w3.org/2000/svg" style="width:${g.size}">
+      <path d="M0,10 Q10,2 20,10 Q30,2 40,10" stroke="rgba(30,50,80,0.55)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>`;
+    document.getElementById('scene').appendChild(el);
+  });
+
+  // ── OCEAN WAVES ──
+  const ocean = document.getElementById('ocean');
+  const waveColors = [
+    'rgba(80,190,240,0.6)','rgba(50,160,210,0.55)','rgba(30,130,180,0.5)','rgba(20,100,150,0.45)'
+  ];
+  const waveBottomPcts = [74, 56, 38, 20];
+  ['16s','12s','20s','9s'].forEach((spd, i) => {
+    const row = document.createElement('div');
+    row.className = 'wave-row';
+    const delays = ['0s','-5s','-3s','-8s'];
+    row.style.cssText = `bottom:${waveBottomPcts[i]}%; --speed:${spd}; --delay:${delays[i]};`;
+    const amp = 10 - i*1.5;
+    const segs = 20;
+    let p1 = `M0,${amp} `, p2 = `M0,${amp} `;
+    for (let x = 0; x <= segs; x++) {
+      const px = (x/segs)*50;
+      p1 += `L${px},${amp + Math.sin((x/segs)*Math.PI*2)*amp} `;
+      p2 += `L${px+50},${amp + Math.sin((x/segs)*Math.PI*2+Math.PI)*amp} `;
+    }
+    const h = amp*2;
+    row.innerHTML = `<svg viewBox="0 0 100 ${h+2}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="${p1} L50,${h+2} L0,${h+2} Z" fill="${waveColors[i]}"/>
+      <path d="${p2} L100,${h+2} L50,${h+2} Z" fill="${waveColors[i]}"/>
+    </svg>`;
+    ocean.appendChild(row);
+  });
+
+  // Foam streaks on ocean
+  for (let i = 0; i < 8; i++) {
+    const fs = document.createElement('div');
+    fs.className = 'foam-streak';
+    fs.style.cssText = `
+      bottom:${15+i*10}%;
+      left:${5+i*9}%;
+      width:${30+Math.random()*100}px;
+      --dur:${(1.5+Math.random()*3).toFixed(1)}s;
+      --delay:${(Math.random()*3).toFixed(1)}s;
+    `;
+    ocean.appendChild(fs);
+  }
+
+  // Sparkles
+  for (let i = 0; i < 30; i++) {
+    const sp = document.createElement('div');
+    sp.className = 'sparkle';
+    sp.style.cssText = `
+      top:${Math.random()*80}%;
+      left:${Math.random()*100}%;
+      --dur:${(1+Math.random()*2.5).toFixed(1)}s;
+      --delay:${(Math.random()*3).toFixed(2)}s;
+    `;
+    ocean.appendChild(sp);
+  }
+
+  // ── LOCK LOGIC ──
+  function openLockModal() {
+    if (solved) return;
+    document.getElementById('lock-overlay').classList.add('visible');
+    updateDisplay();
+  }
+  function closeLockModal() {
+    document.getElementById('lock-overlay').classList.remove('visible');
+  }
+  function overlayClick(e) {
+    if (e.target === document.getElementById('lock-overlay')) closeLockModal();
+  }
+  function updateDisplay() {
+    for (let i = 0; i < MAX_DIGITS; i++) {
+      const box = document.getElementById('d' + i);
+      box.textContent = currentInput[i] || '_';
+      box.classList.remove('active','error','success');
+      if (i === currentInput.length && currentInput.length < MAX_DIGITS) box.classList.add('active');
+    }
+  }
+  function pressKey(digit) {
+    if (currentInput.length >= MAX_DIGITS) return;
+    currentInput += digit;
+    setStatus('idle','· · · · · · · · · ·');
+    updateDisplay();
+    if (currentInput.length === MAX_DIGITS) setTimeout(submitCode, 120);
+  }
+  function clearKey() {
+    if (!currentInput.length) return;
+    currentInput = currentInput.slice(0,-1);
+    setStatus('idle','· · · · · · · · · ·');
+    updateDisplay();
+  }
+  function submitCode() {
+    if (currentInput.length < MAX_DIGITS) { setStatus('error','Incomplete code'); shakeDigits(); return; }
+    currentInput === SECRET_CODE ? onSuccess() : onFail();
+  }
+  function setStatus(cls, msg) {
+    const el = document.getElementById('status-msg');
+    el.className = cls; el.textContent = msg;
+  }
+  function shakeDigits() {
+    for (let i = 0; i < MAX_DIGITS; i++) {
+      const b = document.getElementById('d'+i);
+      b.classList.add('error');
+      setTimeout(() => b.classList.remove('error'), 600);
+    }
+  }
+  function onFail() {
+    setStatus('error','Wrong code — try again');
+    shakeDigits();
+    setTimeout(() => { currentInput=''; updateDisplay(); setStatus('idle','· · · · · · · · · ·'); }, 900);
+  }
+  function onSuccess() {
+    for (let i = 0; i < MAX_DIGITS; i++) document.getElementById('d'+i).classList.add('success');
+    setStatus('success','Code accepted!');
+    setTimeout(() => document.getElementById('padlock').classList.add('unlocked'), 400);
+    setTimeout(() => { closeLockModal(); document.getElementById('door').classList.add('open'); }, 1000);
+    setTimeout(() => { solved=true; document.getElementById('success-screen').classList.add('visible'); }, 2200);
+  }
+  function resetGame() {
+    solved=false; currentInput='';
+    document.getElementById('success-screen').classList.remove('visible');
+    document.getElementById('door').classList.remove('open');
+    document.getElementById('padlock').classList.remove('unlocked');
+    updateDisplay(); setStatus('idle','· · · · · · · · · ·');
+  }
+
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('lock-overlay').classList.contains('visible')) return;
+    if (e.key >= '0' && e.key <= '9') pressKey(e.key);
+    else if (e.key === 'Backspace') clearKey();
+    else if (e.key === 'Enter') submitCode();
+    else if (e.key === 'Escape') closeLockModal();
+  });
+
+  document.querySelectorAll('.key').forEach(key => {
+    key.addEventListener('mousemove', e => {
+      const r = key.getBoundingClientRect();
+      key.style.setProperty('--rx', ((e.clientX-r.left)/r.width*100)+'%');
+      key.style.setProperty('--ry', ((e.clientY-r.top)/r.height*100)+'%');
+    });
+  });
+
+  updateDisplay();
+</script>
+</body>
+</html>

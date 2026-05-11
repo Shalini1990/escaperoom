@@ -1,0 +1,2485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Find the treasure</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ocean-deep:   #0a1628;
+      --ocean-mid:    #0d2444;
+      --ocean-light:  #1a4a7a;
+      --ocean-bright: #2d7dd2;
+      --foam:         #e8f4f8;
+      --gold:         #c9a84c;
+      --gold-bright:  #f0c96a;
+      --text-main:    #e8f4f8;
+      --text-dim:     #8ab4cc;
+      --parchment:    #f5e6c8;
+      --ink:          #2c1810;
+    }
+
+    html, body {
+      height: 100%;
+      height: -webkit-fill-available;
+      background: var(--ocean-deep);
+      color: var(--text-main);
+      font-family: Georgia, 'Times New Roman', serif;
+      overflow: hidden;
+    }
+
+    /* ── App shell ── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      height: -webkit-fill-available;
+    }
+
+    /* ── Oxygen bar ── */
+    #oxygen-bar {
+      flex-shrink: 0;
+      display: none; /* hidden until escape room */
+      background: var(--ocean-mid);
+      border-bottom: 1px solid var(--ocean-light);
+      padding: 8px 16px;
+      z-index: 100;
+    }
+
+    #oxygen-bar .o2-label {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    #oxygen-bar .o2-track {
+      height: 8px;
+      background: var(--ocean-deep);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    #oxygen-bar .o2-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #2d7dd2, #56c8e8);
+      border-radius: 4px;
+      transform-origin: left center;
+      transition: transform 1s linear;
+    }
+
+    /* ── Main content area ── */
+    #main {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Views ── */
+    .view {
+      display: none;
+      position: absolute;
+      inset: 0;
+      padding: 24px 20px 100px;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    /* ── Toggle button ── */
+    #view-toggle {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--ocean-mid);
+      border: 1px solid var(--ocean-light);
+      border-radius: 50px;
+      padding: 12px 28px;
+      color: var(--text-main);
+      font-size: 14px;
+      font-family: Georgia, serif;
+      letter-spacing: 1px;
+      display: none; /* hidden until escape room */
+      z-index: 200;
+      -webkit-tap-highlight-color: transparent;
+      cursor: pointer;
+    }
+
+    /* ── Ocean view (escape room) ── */
+    #ocean-view {
+      background: linear-gradient(180deg, var(--ocean-mid) 0%, var(--ocean-deep) 100%);
+    }
+
+    /* ── Decoder view ── */
+    #decoder-view {
+      background: var(--ocean-deep);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 1; }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%       { transform: translateX(-8px); }
+      40%       { transform: translateX(8px); }
+      60%       { transform: translateX(-6px); }
+      80%       { transform: translateX(6px); }
+    }
+
+    .shake {
+      animation: shake 0.4s ease;
+    }
+
+    /* ── Ocean scene ── */
+    #ocean-view.view {
+      padding: 0;
+      overflow: hidden;
+      background: linear-gradient(180deg, #060f1e 0%, #091b36 35%, #0b2240 65%, #091a32 100%);
+    }
+
+    /* Light rays from above */
+    #ocean-view::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 55%;
+      background:
+        linear-gradient(175deg, rgba(56,140,220,0.06) 0%, transparent 60%),
+        linear-gradient(165deg, transparent 40%, rgba(56,140,220,0.04) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Seabed gradient */
+    #ocean-view::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0; height: 18%;
+      background: linear-gradient(180deg, transparent 0%, #05111f 60%, #040d18 100%);
+      border-radius: 55% 55% 0 0 / 25% 25% 0 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── Cave entrance gate ── */
+    #cave-entrance {
+      position: absolute;
+      bottom: 8%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 180px;
+      z-index: 4;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .ent-arch {
+      position: relative;
+      width: 160px;
+      height: 180px;
+    }
+
+    .ent-opening {
+      position: absolute;
+      bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 122px; height: 152px;
+      background: radial-gradient(ellipse at 50% 30%, #2a1a10 0%, #120808 50%, #060402 100%);
+      border-radius: 61px 61px 0 0;
+      box-shadow: inset 0 0 40px 10px rgba(0,0,0,0.9), 0 0 15px 4px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+
+    .ent-interior {
+      position: absolute;
+      bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 70px; height: 40px;
+      background: radial-gradient(ellipse, rgba(0,160,220,0.12) 0%, transparent 70%);
+      filter: blur(8px);
+    }
+
+    .ent-door {
+      position: absolute;
+      bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 80px; height: 112px;
+      background: linear-gradient(160deg, #6b4a28 0%, #4a3018 45%, #382210 100%);
+      border-radius: 40px 40px 0 0;
+      border: 3px solid #8a6030;
+      border-bottom: none;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.6), 3px 0 10px rgba(0,0,0,0.5);
+      overflow: hidden;
+      opacity: 0.35;
+    }
+
+    .ent-door::before {
+      content: '';
+      position: absolute;
+      top: 8px; left: 8px; right: 8px; bottom: 0;
+      border: 1.5px solid rgba(255,200,120,0.2);
+      border-radius: 35px 35px 0 0;
+    }
+
+    .ent-door::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        180deg,
+        transparent 0px, transparent 11px,
+        rgba(0,0,0,0.15) 11px, rgba(0,0,0,0.15) 12px
+      );
+      border-radius: inherit;
+    }
+
+    .ent-hinge {
+      position: absolute;
+      left: 7px;
+      width: 11px; height: 17px;
+      background: linear-gradient(90deg, #a07840, #d4aa60, #a07840);
+      border-radius: 2px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+      z-index: 2;
+    }
+    .ent-hinge:nth-child(1) { top: 20px; }
+    .ent-hinge:nth-child(2) { top: 56px; }
+    .ent-hinge:nth-child(3) { top: 90px; }
+
+    .ent-padlock {
+      position: absolute;
+      bottom: 38px; left: 50%;
+      margin-left: 14px;
+      width: 24px; height: 28px;
+      z-index: 5;
+      opacity: 0.35;
+    }
+
+    .ent-shackle {
+      position: absolute;
+      top: 0; left: 3px;
+      width: 18px; height: 14px;
+      border: 3px solid #c8a030;
+      border-bottom: none;
+      border-radius: 9px 9px 0 0;
+      transition: top 0.4s ease, transform 0.4s ease, border-color 0.3s;
+    }
+
+    .ent-body {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 24px; height: 18px;
+      background: linear-gradient(135deg, #e0b840, #a07820, #e0b840);
+      border-radius: 3px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .ent-body::after {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #3a2800;
+      box-shadow: 0 2px 0 #2a1800;
+    }
+
+    /* Rocky pillars flanking cave */
+    .cave-pillar {
+      position: absolute;
+      bottom: 0;
+      width: 18%;
+      background: linear-gradient(180deg, #0c1e30 0%, #060f1a 100%);
+      border-radius: 35% 65% 0 0 / 50% 50% 0 0;
+      z-index: 3;
+    }
+    .cave-pillar-l { right: 100%; margin-right: -4%; height: 55%; }
+    .cave-pillar-r { left: 100%;  margin-left: -4%;  height: 45%; }
+
+    /* Seabed rocks */
+    .sb-rock {
+      position: absolute;
+      bottom: 0;
+      background: linear-gradient(180deg, #0e2035 0%, #060e1c 100%);
+      border-radius: 50% 50% 0 0;
+      z-index: 2;
+    }
+
+    /* ── Creatures ── */
+    .creature {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      z-index: 5;
+      transition: opacity 0.12s linear;
+    }
+
+    .creature-sym { line-height: 1; }
+
+    .creature-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--col);
+      box-shadow: 0 0 6px var(--col), 0 0 12px var(--col);
+      opacity: 0.75;
+    }
+
+    /* Night mode */
+    #ocean-view.night-mode .creature:not(.bright) {
+      opacity: 0.4;
+    }
+
+    #ocean-view.night-mode .creature.bright .creature-sym {
+      filter: drop-shadow(0 0 10px var(--col)) drop-shadow(0 0 22px var(--col));
+    }
+
+    /* ── Scene controls ── */
+    .scene-ctrl {
+      position: absolute;
+      background: rgba(8,22,48,0.45);
+      border: 1px solid rgba(42,90,150,0.18);
+      border-radius: 50%;
+      width: 52px; height: 52px;
+      font-size: 26px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .scene-ctrl:active { background: rgba(20,50,100,0.8); }
+    .night-ctrl  { top: 14px; right: 14px; }
+    .diary-ctrl  { bottom: 14px; left: 14px; }
+
+    /* Moon button — CSS crescent, dark/muted */
+    #night-ctrl { color: transparent; font-size: 0; }
+    #night-ctrl::after {
+      content: '';
+      display: block;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      box-shadow: inset -6px 2px 0 2px #8ab4cc;
+      transform: rotate(-25deg);
+      flex-shrink: 0;
+    }
+    /* When night mode active, show sun emoji */
+    #night-ctrl.night-active { color: var(--text-main); font-size: 26px; }
+    #night-ctrl.night-active::after { display: none; }
+
+    /* ── Jack narrative card ── */
+    .scene-msg {
+      position: absolute;
+      top: 14px; left: 14px; right: 66px;
+      background: rgba(6,16,40,0.82);
+      border: 1px solid rgba(42,90,150,0.4);
+      border-radius: 8px;
+      padding: 10px 14px;
+      z-index: 10;
+      max-height: 36px;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .scene-msg.open { max-height: 240px; }
+
+    .scene-msg-text {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--text-dim);
+      white-space: pre-line;
+      display: block;
+    }
+
+    .scene-msg-text .msg-sig {
+      color: rgba(201,168,76,0.75);
+      font-style: italic;
+    }
+
+    /* ── Cave lock modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-box {
+      background: var(--ocean-mid);
+      border: 1px solid var(--ocean-light);
+      border-radius: 14px;
+      padding: 24px 20px 20px;
+      width: 88%;
+      max-width: 310px;
+      position: relative;
+    }
+
+    .modal-title {
+      font-size: 13px;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      text-align: center;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+
+    .modal-slots {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 22px;
+    }
+
+    .code-slot {
+      width: 52px; height: 60px;
+      background: var(--ocean-deep);
+      border: 1px solid var(--ocean-light);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; font-weight: bold;
+      color: var(--gold-bright);
+      font-family: Georgia, serif;
+    }
+
+    .code-slot.active-slot { border-color: var(--gold); }
+
+    .modal-numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .num-btn {
+      background: var(--ocean-deep);
+      border: 1px solid var(--ocean-light);
+      border-radius: 10px;
+      color: var(--text-main);
+      font-size: 22px;
+      font-family: Georgia, serif;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .num-btn:active { background: var(--ocean-light); }
+    .num-btn.del { font-size: 16px; color: var(--text-dim); }
+    .num-btn.empty { background: transparent; border-color: transparent; pointer-events: none; }
+
+    .modal-hint {
+      min-height: 18px;
+      text-align: center;
+      font-size: 13px;
+      font-style: italic;
+      color: var(--text-dim);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px; right: 14px;
+      background: none; border: none;
+      color: var(--text-dim); font-size: 20px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── Diary modal ── */
+    #diary-modal {
+      position: fixed; inset: 0; z-index: 300;
+      background: #000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .diary-page-img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: contain;
+      display: none;
+    }
+    .diary-page-img.active { display: block; }
+    #diary-indicator {
+      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.55); font-size: 13px; letter-spacing: 1.5px;
+      pointer-events: none; z-index: 3; font-family: Georgia, serif;
+    }
+    #diary-close {
+      position: absolute; top: 12px; right: 14px; z-index: 4;
+      width: 38px; height: 38px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(0,0,0,0.55);
+      color: #e8f4f8; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .diary-nav {
+      position: absolute; top: 50%; transform: translateY(-50%); z-index: 4;
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(0,0,0,0.5);
+      color: #e8f4f8; font-size: 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #diary-prev { left: 12px; }
+    #diary-next { right: 12px; }
+
+    /* ── Cave carvings (corner overlays) ── */
+    .cave-carving {
+      position: absolute;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0.3;
+      filter: drop-shadow(2px 3px 3px rgba(8,5,2,0.9));
+    }
+    #carving-trident { top: 60px;    left: 20px;  }
+    #carving-anchor  { top: 60px;    right: 20px; }
+    #carving-shell   { bottom: 220px; left: 20px;  }
+    #carving-compass { bottom: 220px; right: 20px; }
+
+    /* ── Cave interior (Puzzle 2) ── */
+    #cave-view.view {
+      padding: 0;
+      overflow: hidden;
+      background: #060c12;
+    }
+    #cave-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    #day-light {
+      position: absolute; inset: 0; pointer-events: none; opacity: 0.1;
+      background:
+        radial-gradient(ellipse at 50% 110%, rgba(255,220,140,0.75) 0%, rgba(255,200,100,0.45) 20%, rgba(255,170,60,0.18) 42%, transparent 62%),
+        radial-gradient(ellipse at 18% 110%, rgba(255,215,130,0.35) 0%, transparent 36%),
+        radial-gradient(ellipse at 82% 110%, rgba(255,215,130,0.28) 0%, transparent 32%);
+    }
+    #shaft-l {
+      position: absolute; top: 0; left: 16%; width: 110px; height: 66%; pointer-events: none; opacity: 0.1;
+      background: linear-gradient(180deg, rgba(255,235,170,0.5) 0%, rgba(255,220,140,0.22) 55%, transparent 100%);
+      transform: skewX(9deg); filter: blur(14px);
+      animation: shaftWave 8s ease-in-out infinite alternate;
+    }
+    #shaft-r {
+      position: absolute; top: 0; right: 22%; width: 70px; height: 46%; pointer-events: none; opacity: 0.1;
+      background: linear-gradient(180deg, rgba(255,230,160,0.28) 0%, rgba(255,210,120,0.1) 60%, transparent 100%);
+      transform: skewX(-6deg); filter: blur(12px);
+      animation: shaftWave 11s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes shaftWave { 0% { opacity: 0.75; } 100% { opacity: 1; } }
+
+    #caustics {
+      position: absolute; inset: 0; pointer-events: none; opacity: 0.1; mix-blend-mode: screen;
+      background-image:
+        radial-gradient(ellipse 40px 18px at 22% 62%, rgba(80,200,220,0.35) 0%, transparent 100%),
+        radial-gradient(ellipse 28px 14px at 38% 55%, rgba(60,180,210,0.28) 0%, transparent 100%),
+        radial-gradient(ellipse 50px 20px at 55% 68%, rgba(70,210,230,0.3)  0%, transparent 100%),
+        radial-gradient(ellipse 32px 16px at 70% 60%, rgba(50,190,215,0.25) 0%, transparent 100%),
+        radial-gradient(ellipse 44px 18px at 82% 72%, rgba(65,200,225,0.3)  0%, transparent 100%),
+        radial-gradient(ellipse 26px 12px at 14% 48%, rgba(55,185,210,0.22) 0%, transparent 100%),
+        radial-gradient(ellipse 36px 15px at 46% 42%, rgba(75,205,228,0.2)  0%, transparent 100%),
+        radial-gradient(ellipse 30px 13px at 65% 50%, rgba(58,192,218,0.22) 0%, transparent 100%);
+      animation: causticShift 4s ease-in-out infinite alternate;
+    }
+    @keyframes causticShift {
+      0%   { background-position: 0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0; opacity: 0.45; }
+      33%  { background-position: 8px -5px,-6px 4px,5px 7px,-8px -3px,4px 6px,-5px 8px,7px -4px,-4px 5px; opacity: 0.65; }
+      66%  { background-position: -5px 8px,7px -6px,-8px 4px,6px 8px,-4px -7px,8px -3px,-6px 6px,5px -8px; opacity: 0.5; }
+      100% { background-position: 4px 6px,-8px 5px,6px -8px,-5px 4px,8px -6px,-4px -7px,5px 8px,-7px 4px; opacity: 0.6; }
+    }
+
+    #water-shimmer {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 36%; pointer-events: none;
+      background: linear-gradient(180deg, transparent 0%, rgba(30,120,160,0.12) 30%, rgba(20,100,140,0.22) 60%, rgba(10,80,120,0.35) 100%);
+      animation: waterShimmer 3s ease-in-out infinite alternate;
+    }
+    @keyframes waterShimmer { 0% { opacity: 0.7; } 100% { opacity: 1; } }
+
+    .water-glint {
+      position: absolute; border-radius: 50%; background: rgba(180,240,255,0.7); filter: blur(0.5px); pointer-events: none;
+      animation: glintAnim var(--dur) ease-in-out infinite; animation-delay: var(--delay);
+    }
+    @keyframes glintAnim { 0%,100% { opacity: 0; transform: scale(0.5); } 40%,60% { opacity: 1; transform: scale(1.4); } }
+
+    .mote {
+      position: absolute; border-radius: 50%; background: rgba(255,240,180,0.9); pointer-events: none;
+      animation: moteFloat var(--dur) ease-in-out infinite; animation-delay: var(--delay);
+    }
+    @keyframes moteFloat {
+      0%   { transform: translateY(0) translateX(0); opacity: 0; }
+      12%  { opacity: 1; }
+      88%  { opacity: 0.7; }
+      100% { transform: translateY(-160px) translateX(var(--dx)); opacity: 0; }
+    }
+
+    /* Torch flames */
+    .torch-flame { position: absolute; pointer-events: none; opacity: 0.1; }
+    .flame-wrap  { position: relative; width: 16px; height: 24px; }
+    .flame-outer { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 88%, #ff9000, #ff4400 55%, #cc1800 100%); border-radius: 50% 50% 22% 22%; animation: tF1 0.12s ease-in-out infinite alternate; }
+    .flame-mid   { position: absolute; top: 4px; left: 3px; width: 10px; height: 16px; background: radial-gradient(ellipse at 50% 88%, #ffd040, #ffaa00 70%); border-radius: 50% 50% 22% 22%; animation: tF2 0.18s ease-in-out infinite alternate; }
+    .flame-tip   { position: absolute; top: 6px; left: 5px; width: 6px; height: 10px; background: radial-gradient(ellipse at 50% 88%, #ffffff, #fff8c0 70%); border-radius: 50% 50% 22% 22%; }
+    .flame-glow  { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(ellipse, rgba(255,160,30,0.45) 0%, transparent 70%); animation: tGlow 0.3s ease-in-out infinite alternate; }
+    @keyframes tF1   { from { transform: scaleX(0.86) scaleY(1); }     to { transform: scaleX(1.14) scaleY(0.91); } }
+    @keyframes tF2   { from { transform: rotate(-4deg) scaleY(0.88); } to { transform: rotate(4deg) scaleY(1.12); } }
+    @keyframes tGlow { from { opacity: 0.65; transform: translateX(-50%) scale(0.88); } to { opacity: 1; transform: translateX(-50%) scale(1.22); } }
+
+    /* Hatch */
+    #hatch-wrap { position: absolute; z-index: 8; transform-style: preserve-3d; perspective: 600px; }
+    #hatch-door {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      transform-origin: top center; transform-style: preserve-3d; cursor: pointer;
+      transition: transform 1.6s cubic-bezier(0.4,0,0.2,1), opacity 1.6s ease;
+    }
+    #hatch-door.open { transform: perspective(500px) rotateX(-110deg); opacity: 0.35; }
+
+    #cave2-padlock { position: absolute; z-index: 12; cursor: pointer; transition: transform 0.2s; }
+    #c2pl-shackle  { position: absolute; top: 0; left: 4px; width: 20px; height: 14px; border: 3px solid #d4a820; border-bottom: none; border-radius: 10px 10px 0 0; transition: top 0.4s ease, transform 0.4s ease, border-color 0.3s; }
+    #c2pl-body     { position: absolute; bottom: 0; left: 0; width: 28px; height: 20px; background: linear-gradient(135deg, #e8c040, #a87c18, #e8c040); border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; }
+    #c2pl-body::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #3a2400; box-shadow: 0 2px 0 #1a1000; }
+    #cave2-padlock.unlocked #c2pl-shackle { top: -10px; transform: rotate(35deg); border-color: #44ee88; }
+    #cave2-padlock.unlocked #c2pl-body    { background: linear-gradient(135deg, #44ee88, #00aa44, #44ee88); }
+
+    #hatch-hint { position: absolute; z-index: 11; white-space: nowrap; font-size: 10px; color: rgba(180,240,255,0.75); letter-spacing: 2px; text-transform: uppercase; pointer-events: none; font-family: Georgia, serif; animation: pulse 2.5s ease-in-out infinite; }
+
+    /* ── Narrative overlay ── */
+    #narrative-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 500;
+      background: rgba(4, 10, 22, 0.97);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: max(56px, calc(env(safe-area-inset-top) + 40px)) 28px max(60px, calc(env(safe-area-inset-bottom) + 40px));
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+    #narrative-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .narr-text {
+      font-size: 16px;
+      line-height: 1.85;
+      color: #c8dce8;
+      font-family: Georgia, serif;
+      text-align: left;
+      white-space: pre-line;
+      max-width: 380px;
+      width: 100%;
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      align-items: center;
+    }
+    .narr-inner {
+      width: 100%;
+    }
+    .narr-sig {
+      display: block;
+      margin-top: 22px;
+      color: rgba(201,168,76,0.8);
+      font-style: italic;
+    }
+    .narr-footer {
+      flex-shrink: 0;
+      width: 100%;
+      max-width: 380px;
+      margin-top: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    .narr-timer-track {
+      width: 100%;
+      height: 2px;
+      background: rgba(42,90,150,0.4);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+    .narr-timer-fill {
+      height: 100%;
+      width: 100%;
+      background: rgba(201,168,76,0.5);
+      transform-origin: left center;
+      transform: scaleX(1);
+      transition: transform 30s linear;
+    }
+    .narr-timer-fill.run { transform: scaleX(0); }
+    .narr-skip {
+      background: transparent;
+      border: 1px solid rgba(42,90,150,0.5);
+      border-radius: 8px;
+      color: #4a7a9a;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      letter-spacing: 1px;
+      padding: 10px 28px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .narr-skip:active { background: rgba(26,74,122,0.25); }
+
+    /* ── Puzzle 3 — constellation view ── */
+    #puzzle3-view.view {
+      padding: 0;
+      overflow: hidden;
+      background: #050504;
+      flex-direction: column;
+    }
+    #puzzle3-view.view.active {
+      display: flex;
+    }
+    .p1-bg, .p2-bg, .p3-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.35;
+      z-index: 0;
+      pointer-events: none;
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+    }
+    .p1-bg { background-image: url('puzzle1new.JPG'); }
+    .p2-bg { background-image: url('puzzle2.png'); }
+    .p3-bg { background-image: url('seabed.png'); }
+    #puzzle3-view.view > *:not(.p3-bg) {
+      position: relative;
+      z-index: 1;
+    }
+
+    .p3-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px 9px;
+      border-bottom: 1px solid rgba(100,160,180,0.15);
+      background: rgba(0,0,0,0.3);
+    }
+
+    .p3-header-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .p3-header-sym  { font-size: 28px; line-height: 1; }
+    .p3-header-meta { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); }
+
+    .p3-nav-btn {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      border: 1px solid rgba(100,160,180,0.3);
+      background: rgba(0,0,0,0.4);
+      color: var(--text-main);
+      font-size: 24px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .p3-group-panel {
+      display: none;
+      position: relative;
+      flex: 1;
+    }
+    .p3-group-panel.active { display: block; }
+
+    .p3-creatures {
+      position: absolute;
+      inset: 0;
+    }
+
+    .p3-c {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      font-size: 22px;
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .p3-bottom {
+      flex-shrink: 0;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+
+    .p3-dots { display: flex; gap: 10px; align-items: center; }
+    .p3-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(100,160,180,0.3);
+      cursor: pointer;
+      transition: background 0.25s;
+    }
+    .p3-dot.active { background: var(--gold); }
+
+    #p3-padlock {
+      width: 52px; height: 52px;
+      border: none;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #p3-padlock-fallback {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      pointer-events: none;
+    }
+    #p3-padlock img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 0 6px rgba(201,168,76,0.5));
+      transition: filter 0.2s;
+    }
+    #p3-padlock:active img {
+      filter: drop-shadow(0 0 12px rgba(201,168,76,0.9));
+    }
+
+    /* ── Creatures container ── */
+    #creatures-container {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+    }
+    #creatures-container .creature { pointer-events: auto; }
+
+    /* ── Decoder disk ── */
+    .decoder-layout {
+      padding: 16px 16px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .decoder-readout {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--ocean-mid);
+      border: 1px solid var(--ocean-light);
+      border-radius: 8px;
+      padding: 10px 20px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    #readout-creature {
+      font-size: 12px;
+      color: var(--text-dim);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-style: italic;
+    }
+
+    #readout-creature.selected {
+      color: var(--text-main);
+      font-style: normal;
+    }
+
+    #readout-letter {
+      font-size: 26px;
+      font-weight: bold;
+      color: var(--text-main);
+      min-width: 22px;
+      text-align: center;
+    }
+
+    .readout-arrow {
+      color: var(--text-dim);
+      font-size: 14px;
+    }
+
+    #readout-digit {
+      font-size: 26px;
+      font-weight: bold;
+      color: var(--gold-bright);
+      min-width: 22px;
+      text-align: center;
+    }
+
+    .disk-wrap {
+      width: 100%;
+      max-width: 320px;
+    }
+
+    #disk-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      touch-action: none;
+      cursor: grab;
+    }
+
+    #disk-svg:active { cursor: grabbing; }
+
+    .letter-jump-wrap {
+      width: 100%;
+      max-width: 320px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .letter-jump-wrap::-webkit-scrollbar { display: none; }
+
+    #letter-jump {
+      display: flex;
+      gap: 4px;
+      padding-bottom: 2px;
+      width: max-content;
+    }
+
+    .jump-btn {
+      background: var(--ocean-mid);
+      border: 1px solid var(--ocean-light);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 13px;
+      font-family: Georgia, serif;
+      padding: 8px 9px;
+      min-width: 30px;
+      text-align: center;
+      -webkit-tap-highlight-color: transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .jump-btn:active {
+      background: var(--ocean-light);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .scratchpad-wrap { width: 100%; max-width: 320px; }
+
+    .scratchpad-label {
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    #scratchpad {
+      width: 100%;
+      height: 72px;
+      background: var(--ocean-mid);
+      border: 1px solid var(--ocean-light);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 16px;
+      font-family: Georgia, serif;
+      padding: 10px 12px;
+      resize: none;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    #scratchpad:focus { border-color: var(--ocean-bright); }
+
+    .creature-guide-wrap { width: 100%; max-width: 320px; }
+
+    .guide-toggle {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 13px;
+      font-family: Georgia, serif;
+      letter-spacing: 1px;
+      padding: 4px 0;
+      -webkit-tap-highlight-color: transparent;
+      cursor: pointer;
+    }
+
+    .creature-guide {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
+      margin-top: 10px;
+    }
+
+    .creature-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .creature-abbr {
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--gold);
+      min-width: 30px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Oxygen bar — always on top, hidden until escape room -->
+  <div id="oxygen-bar">
+    <div class="o2-label">Oxygen</div>
+    <div class="o2-track">
+      <div class="o2-fill" id="o2-fill"></div>
+    </div>
+  </div>
+
+  <!-- Main scrollable area -->
+  <div id="main">
+
+    <!-- Ocean view (escape room) -->
+    <div id="ocean-view" class="view">
+      <div class="p1-bg"></div>
+
+      <!-- Controls -->
+      <button class="scene-ctrl night-ctrl" id="night-ctrl">🌙</button>
+      <button class="scene-ctrl diary-ctrl" id="diary-ctrl">📖</button>
+
+      <!-- Creatures rendered by JS -->
+      <div id="creatures-container"></div>
+
+      <!-- Cave entrance gate -->
+      <div id="cave-entrance">
+        <div class="ent-arch">
+          <div class="ent-opening">
+            <div class="ent-interior"></div>
+          </div>
+          <div class="ent-door">
+            <div class="ent-hinge"></div>
+            <div class="ent-hinge"></div>
+            <div class="ent-hinge"></div>
+          </div>
+          <div class="ent-padlock">
+            <div class="ent-shackle"></div>
+            <div class="ent-body"></div>
+          </div>
+        </div>
+        <div class="cave-pillar cave-pillar-l"></div>
+        <div class="cave-pillar cave-pillar-r"></div>
+      </div>
+
+    </div>
+
+    <!-- Cave view (Puzzle 2) -->
+    <div id="cave-view" class="view">
+      <div class="p2-bg"></div>
+
+      <svg id="cave-svg" viewBox="0 0 1200 750" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="bg-g" cx="50%" cy="50%" r="70%"><stop offset="0%" stop-color="#1c1c14"/><stop offset="50%" stop-color="#0e0e0a"/><stop offset="100%" stop-color="#050504"/></radialGradient>
+          <linearGradient id="wall-l" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#0a0a06"/><stop offset="65%" stop-color="#221e10"/><stop offset="100%" stop-color="#302c18"/></linearGradient>
+          <linearGradient id="wall-r" x1="1" y1="0" x2="0" y2="0"><stop offset="0%" stop-color="#0a0a06"/><stop offset="65%" stop-color="#221e10"/><stop offset="100%" stop-color="#302c18"/></linearGradient>
+          <linearGradient id="ceil-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#050504"/><stop offset="100%" stop-color="#181610"/></linearGradient>
+          <linearGradient id="wl-sun" x1="1" y1="0" x2="0" y2="0"><stop offset="0%" stop-color="rgba(255,220,130,0.28)"/><stop offset="100%" stop-color="transparent"/></linearGradient>
+          <linearGradient id="wr-sun" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="rgba(255,220,130,0.2)"/><stop offset="100%" stop-color="transparent"/></linearGradient>
+          <linearGradient id="water-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a6888"/><stop offset="35%" stop-color="#0e4a68"/><stop offset="70%" stop-color="#083448"/><stop offset="100%" stop-color="#041e2c"/></linearGradient>
+          <radialGradient id="water-day" cx="50%" cy="0%" r="70%"><stop offset="0%" stop-color="rgba(80,200,240,0.45)"/><stop offset="40%" stop-color="rgba(30,140,190,0.2)"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+          <linearGradient id="ledge-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3a3020"/><stop offset="100%" stop-color="#1a1610"/></linearGradient>
+          <linearGradient id="platform-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#342c1c"/><stop offset="100%" stop-color="#1e1810"/></linearGradient>
+          <radialGradient id="hole-g" cx="50%" cy="20%" r="80%"><stop offset="0%" stop-color="#120820"/><stop offset="60%" stop-color="#06040e"/><stop offset="100%" stop-color="#020106"/></radialGradient>
+          <radialGradient id="ceil-reflect" cx="50%" cy="60%" r="50%"><stop offset="0%" stop-color="rgba(40,160,200,0.12)"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+          <filter id="carve-fx" x="-15%" y="-15%" width="130%" height="130%">
+            <feDropShadow dx="2.5" dy="3.5" stdDeviation="3" flood-color="#0c0804" flood-opacity="0.8"/>
+          </filter>
+          <!-- half-cut clips: show inner (cave-facing) half of each symbol -->
+          <clipPath id="clip-trident"><rect x="462" y="0" width="300" height="750"/></clipPath>
+          <clipPath id="clip-anchor"> <rect x="462" y="0" width="300" height="750"/></clipPath>
+          <clipPath id="clip-shell">  <rect x="0"   y="0" width="738" height="750"/></clipPath>
+          <clipPath id="clip-compass"><rect x="0"   y="0" width="738" height="750"/></clipPath>
+        </defs>
+        <rect width="1200" height="750" fill="url(#bg-g)" opacity="0.1"/>
+        <!-- Left wall (dimmed) -->
+        <g opacity="0.1">
+        <path d="M0,0 L0,750 L318,750 L310,692 L338,630 L300,566 L330,500 L290,434 L324,368 L284,302 L316,236 L274,170 L308,102 L264,44 L288,0 Z" fill="url(#wall-l)"/>
+        <path d="M0,0 L0,750 L318,750 L310,692 L338,630 L300,566 L330,500 L290,434 L324,368 L284,302 L316,236 L274,170 L308,102 L264,44 L288,0 Z" fill="url(#wl-sun)"/>
+        <path d="M0,138 Q88,130 174,140 Q238,147 272,134" stroke="rgba(255,220,140,0.1)" stroke-width="2" fill="none"/>
+        <path d="M0,260 Q90,252 178,262 Q244,269 290,256" stroke="rgba(255,220,140,0.07)" stroke-width="1.5" fill="none"/>
+        <path d="M0,395 Q98,387 198,397 Q268,404 312,391" stroke="rgba(255,220,140,0.1)" stroke-width="2" fill="none"/>
+        <path d="M0,520 Q85,512 170,522 Q236,529 310,516" stroke="rgba(255,220,140,0.07)" stroke-width="1.5" fill="none"/>
+        <path d="M0,570 L0,750 L318,750 L310,692 L338,630 L300,570 Z" fill="rgba(20,80,110,0.25)"/>
+        <path d="M88,192 Q102,238 93,290 Q86,333 96,378" stroke="rgba(0,0,0,0.5)" stroke-width="2" fill="none"/>
+        <path d="M165,385 Q178,428 168,474 Q160,508 170,544" stroke="rgba(0,0,0,0.4)" stroke-width="1.5" fill="none"/>
+        <!-- Right wall (dimmed) -->
+        <path d="M1200,0 L1200,750 L882,750 L890,692 L862,630 L900,566 L870,500 L910,434 L876,368 L916,302 L884,236 L926,170 L892,102 L936,44 L912,0 Z" fill="url(#wall-r)"/>
+        <path d="M1200,0 L1200,750 L882,750 L890,692 L862,630 L900,566 L870,500 L910,434 L876,368 L916,302 L884,236 L926,170 L892,102 L936,44 L912,0 Z" fill="url(#wr-sun)"/>
+        <path d="M1200,144 Q1115,136 1028,146 Q964,153 924,140" stroke="rgba(255,220,140,0.1)" stroke-width="2" fill="none"/>
+        <path d="M1200,268 Q1110,260 1022,270 Q958,277 880,264" stroke="rgba(255,220,140,0.07)" stroke-width="1.5" fill="none"/>
+        <path d="M1200,402 Q1105,394 1012,404 Q948,411 876,398" stroke="rgba(255,220,140,0.1)" stroke-width="2" fill="none"/>
+        <path d="M1200,526 Q1116,518 1028,528 Q962,535 884,522" stroke="rgba(255,220,140,0.07)" stroke-width="1.5" fill="none"/>
+        <path d="M1200,570 L1200,750 L882,750 L890,692 L862,630 L900,570 Z" fill="rgba(20,80,110,0.2)"/>
+        <path d="M1108,248 Q1094,296 1102,348 Q1109,390 1098,428" stroke="rgba(0,0,0,0.45)" stroke-width="2" fill="none"/>
+        </g>
+
+        <!-- ── Carved wall symbols ── -->
+        <!-- Symbols shifted to x≈462 (left) and x≈738 (right) so they are visible
+             on portrait-mobile (visible SVG x range ≈ 427–773 with slice scaling).
+             Clips show only the cave-facing inner half of each symbol. -->
+
+
+        <!-- Ceiling + stalactites (dimmed) -->
+        <g opacity="0.1">
+        <path d="M0,0 L288,0 L276,54 L318,88 L286,130 L334,160 L305,200 L354,228 L408,210 L447,250 L486,220 L526,260 L565,230 L600,270 L635,234 L674,265 L714,240 L754,270 L796,246 L838,220 L880,250 L922,200 L953,230 L993,180 L1026,210 L1068,168 L1098,132 L1128,94 L1104,50 L1200,0 Z" fill="url(#ceil-g)"/>
+        <path d="M0,0 L288,0 L276,54 L318,88 L286,130 L334,160 L305,200 L354,228 L408,210 L447,250 L486,220 L526,260 L565,230 L600,270 L635,234 L674,265 L714,240 L754,270 L796,246 L838,220 L880,250 L922,200 L953,230 L993,180 L1026,210 L1068,168 L1098,132 L1128,94 L1104,50 L1200,0 Z" fill="rgba(0,0,0,0.2)"/>
+        <ellipse cx="400" cy="180" rx="80" ry="20" fill="rgba(30,150,200,0.07)"/>
+        <ellipse cx="700" cy="210" rx="110" ry="25" fill="rgba(30,150,200,0.09)"/>
+        <ellipse cx="950" cy="190" rx="75" ry="18" fill="rgba(30,150,200,0.06)"/>
+        <rect x="0" y="0" width="1200" height="320" fill="url(#ceil-reflect)"/>
+        <g fill="#0c0c08" stroke="#080806" stroke-width="0.8">
+          <path d="M78,54 Q76,54 75,92 Q78,97 81,92 Q80,54 78,54Z"/>
+          <path d="M170,40 Q167,40 165,84 Q170,90 175,84 Q173,40 170,40Z"/>
+          <path d="M252,68 Q248,68 246,120 Q252,127 258,120 Q256,68 252,68Z"/>
+          <path d="M348,50 Q344,50 342,100 Q348,106 354,100 Q352,50 348,50Z"/>
+          <path d="M436,62 Q433,62 432,94 Q436,98 440,94 Q439,62 436,62Z"/>
+          <path d="M524,46 Q520,46 518,106 Q524,112 530,106 Q528,46 524,46Z"/>
+          <path d="M600,56 Q597,56 596,98 Q600,103 604,98 Q603,56 600,56Z"/>
+          <path d="M680,42 Q676,42 674,110 Q680,117 686,110 Q684,42 680,42Z"/>
+          <path d="M764,65 Q761,65 760,96 Q764,100 768,96 Q767,65 764,65Z"/>
+          <path d="M852,48 Q848,48 846,106 Q852,112 858,106 Q856,48 852,48Z"/>
+          <path d="M940,60 Q937,60 936,92 Q940,96 944,92 Q943,60 940,60Z"/>
+          <path d="M1038,44 Q1034,44 1032,108 Q1038,114 1044,108 Q1042,44 1038,44Z"/>
+          <path d="M1116,52 Q1113,52 1112,86 Q1116,90 1120,86 Q1119,52 1116,52Z"/>
+        </g>
+        </g>
+        <!-- Stalactite drip bubbles (kept) -->
+        <circle cx="78" cy="92" r="2.5" fill="rgba(80,180,220,0.5)"/>
+        <circle cx="170" cy="84" r="2" fill="rgba(80,180,220,0.45)"/>
+        <circle cx="252" cy="120" r="3" fill="rgba(80,180,220,0.55)"/>
+        <circle cx="524" cy="106" r="3" fill="rgba(80,180,220,0.5)"/>
+        <circle cx="680" cy="110" r="3.5" fill="rgba(80,180,220,0.55)"/>
+        <circle cx="852" cy="106" r="3" fill="rgba(80,180,220,0.5)"/>
+        <circle cx="1038" cy="108" r="3.5" fill="rgba(80,180,220,0.52)"/>
+        <!-- Water floor -->
+        <path d="M0,750 L0,558 Q55,544 120,556 Q175,566 228,552 Q285,538 345,550 Q408,562 468,548 Q530,534 592,546 Q654,558 716,544 Q778,532 840,544 Q902,556 964,542 Q1026,530 1088,542 Q1144,552 1200,540 L1200,750 Z" fill="url(#water-g)"/>
+        <path d="M0,558 Q55,544 120,556 Q175,566 228,552 Q285,538 345,550 Q408,562 468,548 Q530,534 592,546 Q654,558 716,544 Q778,532 840,544 Q902,556 964,542 Q1026,530 1088,542 Q1144,552 1200,540" fill="none" stroke="rgba(120,220,255,0.4)" stroke-width="2"/>
+        <path d="M0,558 Q55,544 120,556 Q175,566 228,552 Q285,538 345,550 Q408,562 468,548 Q530,534 592,546 Q654,558 716,544 Q778,532 840,544 Q902,556 964,542 Q1026,530 1088,542 Q1144,552 1200,540" fill="none" stroke="rgba(200,245,255,0.25)" stroke-width="6" stroke-linecap="round"/>
+        <ellipse cx="600" cy="580" rx="480" ry="65" fill="url(#water-day)"/>
+        <ellipse cx="600" cy="640" rx="350" ry="55" fill="rgba(10,80,120,0.35)"/>
+        <path id="wave1" d="M0,590 Q100,582 200,590 Q300,598 400,590 Q500,582 600,590 Q700,598 800,590 Q900,582 1000,590 Q1100,598 1200,590" fill="none" stroke="rgba(100,210,240,0.22)" stroke-width="1.5"/>
+        <path id="wave2" d="M0,614 Q120,608 240,614 Q360,620 480,614 Q600,608 720,614 Q840,620 960,614 Q1080,608 1200,614" fill="none" stroke="rgba(80,190,220,0.18)" stroke-width="1"/>
+        <path id="wave3" d="M0,638 Q150,632 300,638 Q450,644 600,638 Q750,632 900,638 Q1050,644 1200,638" fill="none" stroke="rgba(60,170,210,0.15)" stroke-width="1"/>
+        <!-- Stone ledges -->
+        <path d="M0,558 L0,750 L318,750 L318,592 Q268,578 210,584 Q158,590 100,580 Q50,572 0,578 Z" fill="url(#ledge-g)" stroke="#101008" stroke-width="1.5"/>
+        <path d="M318,592 Q268,578 210,584 Q158,590 100,580 Q50,572 0,578" fill="none" stroke="rgba(80,180,220,0.35)" stroke-width="2"/>
+        <path d="M0,578 Q50,572 100,580 Q158,590 210,584 Q268,578 318,592" fill="none" stroke="rgba(40,100,50,0.4)" stroke-width="4" stroke-linecap="round"/>
+        <path d="M1200,558 L1200,750 L882,750 L882,592 Q932,578 990,584 Q1042,590 1100,580 Q1150,572 1200,578 Z" fill="url(#ledge-g)" stroke="#101008" stroke-width="1.5"/>
+        <path d="M882,592 Q932,578 990,584 Q1042,590 1100,580 Q1150,572 1200,578" fill="none" stroke="rgba(80,180,220,0.35)" stroke-width="2"/>
+        <path d="M882,592 Q932,578 990,584 Q1042,590 1100,580 Q1150,572 1200,578" fill="none" stroke="rgba(40,100,50,0.4)" stroke-width="4" stroke-linecap="round"/>
+        <!-- Central platform & hatch (dimmed) -->
+        <g opacity="0.1">
+        <ellipse cx="600" cy="620" rx="185" ry="55" fill="url(#platform-g)" stroke="#0e0c08" stroke-width="2"/>
+        <ellipse cx="600" cy="614" rx="185" ry="48" fill="none" stroke="rgba(80,180,220,0.3)" stroke-width="2"/>
+        <path d="M490,618 Q540,612 590,620" stroke="rgba(0,0,0,0.45)" stroke-width="1.2" fill="none"/>
+        <path d="M620,614 Q665,608 710,616" stroke="rgba(0,0,0,0.4)" stroke-width="1" fill="none"/>
+        <path d="M448,620 Q448,572 600,562 Q752,572 752,620 Z" fill="url(#hole-g)"/>
+        <path d="M448,620 Q448,572 600,562 Q752,572 752,620 Z" fill="none" stroke="#080410" stroke-width="6"/>
+        <ellipse cx="600" cy="608" rx="90" ry="22" fill="rgba(50,20,80,0.5)"/>
+        <ellipse cx="600" cy="602" rx="60" ry="14" fill="rgba(70,30,110,0.3)"/>
+        <path d="M448,620 Q448,572 600,562 Q752,572 752,620" fill="none" stroke="rgba(255,200,100,0.2)" stroke-width="3" stroke-linecap="round"/>
+        <path d="M390,638 L448,620 Q448,572 600,562 Q752,572 752,620 L810,638 L810,665 L390,665 Z" fill="#2a2218" stroke="#181408" stroke-width="1.5"/>
+        <path d="M390,638 L448,620 Q448,572 600,562 Q752,572 752,620 L810,638" fill="none" stroke="rgba(255,220,140,0.15)" stroke-width="2"/>
+        </g>
+        <!-- Torch wall brackets (dimmed) -->
+        <g opacity="0.1">
+        <rect x="317" y="440" width="18" height="7" rx="2" fill="#3a2810"/>
+        <rect x="322" y="430" width="7"  height="18" rx="2" fill="#5a3c18"/>
+        <circle cx="326" cy="424" r="28" fill="rgba(255,140,30,0.2)"/>
+        <rect x="865" y="440" width="18" height="7" rx="2" fill="#3a2810"/>
+        <rect x="870" y="430" width="7"  height="18" rx="2" fill="#5a3c18"/>
+        <circle cx="874" cy="424" r="28" fill="rgba(255,140,30,0.16)"/>
+        </g>
+        <!-- Water ripples -->
+        <ellipse cx="150" cy="575" rx="45" ry="10" fill="none" stroke="rgba(100,200,230,0.25)" stroke-width="1.5"/>
+        <ellipse cx="1050" cy="573" rx="45" ry="10" fill="none" stroke="rgba(100,200,230,0.22)" stroke-width="1.5"/>
+        <ellipse cx="415" cy="628" rx="22" ry="5"  fill="none" stroke="rgba(100,200,230,0.2)" stroke-width="1.2"/>
+        <ellipse cx="785" cy="628" rx="22" ry="5"  fill="none" stroke="rgba(100,200,230,0.2)" stroke-width="1.2"/>
+        <!-- Algae hints (dimmed) -->
+        <g opacity="0.1">
+        <path d="M340,600 Q348,590 344,580 Q352,572 348,562" stroke="rgba(30,120,50,0.4)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M860,598 Q852,588 856,578 Q848,570 852,560" stroke="rgba(30,120,50,0.35)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        </g>
+      </svg>
+
+      <!-- Corner carvings -->
+      <div id="carving-trident" class="cave-carving">
+        <svg viewBox="-18 -5 130 240" width="65" height="120" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#555555" stroke-linecap="round" stroke-linejoin="round">
+          <defs><clipPath id="clip-t"><rect x="-18" y="-5" width="65" height="240"/></clipPath></defs>
+          <g clip-path="url(#clip-t)">
+            <line x1="47" y1="80"  x2="47" y2="225" stroke-width="5.5"/>
+            <line x1="2"  y1="80"  x2="92" y2="80"  stroke-width="5"/>
+            <line x1="47" y1="80"  x2="47" y2="5"   stroke-width="5"/>
+            <path d="M2,80 Q-13,50 -6,22 Q0,6 12,0"   stroke-width="5"/>
+            <path d="M92,80 Q107,50 100,22 Q94,6 82,0" stroke-width="5"/>
+          </g>
+        </svg>
+      </div>
+
+      <div id="carving-anchor" class="cave-carving">
+        <svg viewBox="0 0 78 160" width="54" height="112" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#555555" stroke-linecap="round" stroke-linejoin="round">
+          <defs><clipPath id="clip-a"><rect x="0" y="0" width="39" height="160"/></clipPath></defs>
+          <g clip-path="url(#clip-a)">
+            <circle cx="39" cy="26" r="26" stroke-width="5.5"/>
+            <line x1="39" y1="52"  x2="39" y2="160" stroke-width="5.5"/>
+            <line x1="0"  y1="61"  x2="78" y2="61"  stroke-width="5"/>
+            <path d="M39,160 Q11,154 -3,136 Q-10,125 -2,117" stroke-width="5"/>
+            <path d="M39,160 Q64,154 78,138" stroke-width="5"/>
+          </g>
+        </svg>
+      </div>
+
+      <div id="carving-shell" class="cave-carving">
+        <svg viewBox="0 0 176 110" width="100" height="62" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#555555" stroke-linecap="round" stroke-linejoin="round">
+          <defs><clipPath id="clip-s"><rect x="84" y="-5" width="92" height="120"/></clipPath></defs>
+          <g clip-path="url(#clip-s)">
+            <path d="M0,110 Q-8,54 24,27 Q48,6 84,0 Q131,6 158,30 Q184,60 176,110" stroke-width="5"/>
+            <line x1="0"  y1="110" x2="176" y2="110" stroke-width="5"/>
+            <line x1="84" y1="0"   x2="84"  y2="110" stroke-width="4.5"/>
+            <line x1="84" y1="110" x2="148" y2="24"  stroke-width="4"/>
+            <line x1="84" y1="110" x2="176" y2="77"  stroke-width="4"/>
+            <line x1="84" y1="110" x2="20"  y2="25"  stroke-width="4"/>
+            <line x1="84" y1="110" x2="2"   y2="78"  stroke-width="4"/>
+            <path d="M14,94 Q84,80 162,94"   stroke-width="3.5"/>
+            <path d="M28,69 Q84,55 148,68"   stroke-width="3.5"/>
+          </g>
+        </svg>
+      </div>
+
+      <div id="carving-compass" class="cave-carving">
+        <svg viewBox="0 0 130 130" width="80" height="80" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#555555" stroke-linecap="round" stroke-linejoin="round">
+          <defs><clipPath id="clip-c"><rect x="65" y="-5" width="65" height="140"/></clipPath></defs>
+          <g clip-path="url(#clip-c)">
+            <circle cx="65" cy="65" r="65" stroke-width="5"/>
+            <path d="M65,0  L51,25  L65,17 L79,25 Z"  stroke-width="4.5" fill="rgba(210,180,124,0.1)"/>
+            <path d="M65,130 L55,107 L65,115 L75,107 Z" stroke-width="4.5" fill="rgba(210,180,124,0.1)"/>
+            <path d="M130,65 L107,54 L114,65 L107,76 Z" stroke-width="4.5" fill="rgba(210,180,124,0.1)"/>
+            <path d="M0,65  L21,54  L14,65  L21,76 Z"   stroke-width="4.5" fill="rgba(210,180,124,0.1)"/>
+            <line x1="65" y1="7"  x2="65"  y2="123" stroke-width="3.5"/>
+            <line x1="8"  y1="65" x2="122" y2="65"  stroke-width="3.5"/>
+            <line x1="19" y1="20" x2="30"  y2="31"  stroke-width="3"/>
+            <line x1="111" y1="20" x2="100" y2="31" stroke-width="3"/>
+            <line x1="19" y1="110" x2="30"  y2="99" stroke-width="3"/>
+            <line x1="111" y1="110" x2="100" y2="99" stroke-width="3"/>
+            <circle cx="65" cy="65" r="8" stroke-width="4.5"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Lighting overlays -->
+      <div id="day-light"></div>
+      <div id="shaft-l"></div>
+      <div id="shaft-r"></div>
+      <div id="caustics"></div>
+      <div id="water-shimmer"></div>
+
+      <!-- Torches (positioned by JS) -->
+      <div id="cave-torch-l" class="torch-flame">
+        <div class="flame-glow"></div>
+        <div class="flame-wrap"><div class="flame-outer"></div><div class="flame-mid"></div><div class="flame-tip"></div></div>
+      </div>
+      <div id="cave-torch-r" class="torch-flame">
+        <div class="flame-glow" style="animation-delay:0.1s"></div>
+        <div class="flame-wrap"><div class="flame-outer" style="animation-delay:0.07s"></div><div class="flame-mid" style="animation-delay:0.05s"></div><div class="flame-tip"></div></div>
+      </div>
+
+      <!-- Hatch door (positioned by JS) -->
+      <div id="hatch-wrap">
+        <div id="hatch-door">
+          <svg viewBox="0 0 304 58" width="100%" height="100%" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="hw1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8a6030"/><stop offset="50%" stop-color="#5e3e18"/><stop offset="100%" stop-color="#3e2810"/></linearGradient>
+              <linearGradient id="hw2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7a5228"/><stop offset="50%" stop-color="#523618"/><stop offset="100%" stop-color="#3a2610"/></linearGradient>
+              <linearGradient id="ib"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#545048"/><stop offset="50%" stop-color="#343028"/><stop offset="100%" stop-color="#221e16"/></linearGradient>
+            </defs>
+            <polygon points="12,0 292,0 275,19 29,19" fill="url(#hw1)"/>
+            <polygon points="29,20 275,20 258,38 46,38" fill="url(#hw2)"/>
+            <polygon points="46,39 258,39 304,58 0,58" fill="url(#hw1)"/>
+            <line x1="65" y1="0" x2="55" y2="58" stroke="rgba(0,0,0,0.16)" stroke-width="2"/>
+            <line x1="122" y1="0" x2="118" y2="58" stroke="rgba(0,0,0,0.13)" stroke-width="2"/>
+            <line x1="182" y1="0" x2="186" y2="58" stroke="rgba(0,0,0,0.13)" stroke-width="2"/>
+            <line x1="239" y1="0" x2="249" y2="58" stroke="rgba(0,0,0,0.16)" stroke-width="2"/>
+            <polygon points="12,0 292,0 285,5 19,5" fill="url(#ib)" stroke="#141010" stroke-width="1"/>
+            <polygon points="27,17 277,17 269,23 35,23" fill="url(#ib)" stroke="#141010" stroke-width="1"/>
+            <polygon points="43,36 261,36 252,42 52,42" fill="url(#ib)" stroke="#141010" stroke-width="1"/>
+            <polygon points="0,54 304,54 304,58 0,58" fill="url(#ib)" stroke="#141010" stroke-width="1"/>
+            <circle cx="38"  cy="2"  r="3" fill="#6a6050" stroke="#2a2018" stroke-width="0.8"/>
+            <circle cx="152" cy="2"  r="3" fill="#6a6050" stroke="#2a2018" stroke-width="0.8"/>
+            <circle cx="266" cy="2"  r="3" fill="#6a6050" stroke="#2a2018" stroke-width="0.8"/>
+            <circle cx="44"  cy="20" r="3" fill="#6a6050" stroke="#2a2018" stroke-width="0.8"/>
+            <circle cx="152" cy="20" r="3" fill="#6a6050" stroke="#2a2018" stroke-width="0.8"/>
+            <circle cx="260" cy="20" r="3" fill="#6a6050" stroke="#2a2018" stroke-width="0.8"/>
+            <circle cx="58"  cy="39" r="3" fill="#6a6050" stroke="#2a2018" stroke-width="0.8"/>
+            <circle cx="152" cy="39" r="3" fill="#6a6050" stroke="#2a2018" stroke-width="0.8"/>
+            <circle cx="246" cy="39" r="3" fill="#6a6050" stroke="#2a2018" stroke-width="0.8"/>
+            <ellipse cx="152" cy="29" rx="18" ry="9" fill="none" stroke="#7a6030" stroke-width="5"/>
+            <ellipse cx="152" cy="31" rx="12" ry="6" fill="url(#ib)" stroke="#3a2e20" stroke-width="1.5"/>
+            <rect x="170" y="24" width="20" height="12" rx="2" fill="#4a4030" stroke="#2a2018" stroke-width="1"/>
+            <rect x="174" y="20" width="12" height="8"  rx="1" fill="#5a5040" stroke="#2a2018" stroke-width="1"/>
+            <polygon points="12,0 100,0 88,19 29,19" fill="rgba(255,235,170,0.16)"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Padlock (positioned by JS) -->
+      <div id="cave2-padlock">
+        <div id="c2pl-shackle"></div>
+        <div id="c2pl-body"></div>
+      </div>
+
+      <!-- Hint -->
+      <div id="hatch-hint">tap to examine</div>
+
+      <!-- Diary access -->
+      <button class="scene-ctrl diary-ctrl" style="bottom:14px;left:14px;">📖</button>
+
+    </div>
+
+    <!-- Puzzle 3 — constellation view -->
+    <div id="puzzle3-view" class="view">
+      <div class="p3-bg"></div>
+
+      <div class="p3-header">
+        <button class="p3-nav-btn" id="p3-prev">◀</button>
+        <div class="p3-header-info">
+          <span class="p3-header-sym" id="p3-header-sym">🐳</span>
+          <span class="p3-header-meta" id="p3-header-meta">1 · Whale</span>
+        </div>
+        <button class="p3-nav-btn" id="p3-next">▶</button>
+      </div>
+
+      <!-- Group 1: Whale — T: top bar 🐢🪼🪼🐢, vertical 🪼🐢🐢🪼 -->
+      <div class="p3-group-panel active" data-idx="0">
+        <div class="p3-creatures">
+          <span class="p3-c" style="left:12%;top:8%">🐢</span>
+          <span class="p3-c" style="left:38%;top:8%">🪼</span>
+          <span class="p3-c" style="left:62%;top:8%">🪼</span>
+          <span class="p3-c" style="left:88%;top:8%">🐢</span>
+          <span class="p3-c" style="left:50%;top:25%">🪼</span>
+          <span class="p3-c" style="left:50%;top:44%">🐢</span>
+          <span class="p3-c" style="left:50%;top:63%">🐢</span>
+          <span class="p3-c" style="left:50%;top:82%">🪼</span>
+          <span class="p3-c" style="left:26%;top:40%">🐠</span>
+          <span class="p3-c" style="left:76%;top:36%">🐡</span>
+          <span class="p3-c" style="left:20%;top:68%">🦑</span>
+          <span class="p3-c" style="left:74%;top:66%">⭐</span>
+          <span class="p3-c" style="left:34%;top:78%">🐟</span>
+          <span class="p3-c" style="left:8%;top:22%">🦀</span>
+          <span class="p3-c" style="left:88%;top:20%">🦐</span>
+          <span class="p3-c" style="left:8%;top:58%">🐙</span>
+          <span class="p3-c" style="left:88%;top:60%">🦞</span>
+          <span class="p3-c" style="left:18%;top:88%">🦭</span>
+          <span class="p3-c" style="left:78%;top:86%">🐚</span>
+        </div>
+      </div>
+
+      <!-- Group 2: Shark — Z: top 🐢🐢🪼, diagonal 🐢🐢🪼🐢, bottom 🐢🪼🪼 -->
+      <div class="p3-group-panel" data-idx="1">
+        <div class="p3-creatures">
+          <span class="p3-c" style="left:12%;top:8%">🐢</span>
+          <span class="p3-c" style="left:50%;top:8%">🐢</span>
+          <span class="p3-c" style="left:88%;top:8%">🪼</span>
+          <span class="p3-c" style="left:72%;top:26%">🐢</span>
+          <span class="p3-c" style="left:56%;top:44%">🐢</span>
+          <span class="p3-c" style="left:40%;top:62%">🪼</span>
+          <span class="p3-c" style="left:24%;top:78%">🐢</span>
+          <span class="p3-c" style="left:14%;top:90%">🐢</span>
+          <span class="p3-c" style="left:50%;top:90%">🪼</span>
+          <span class="p3-c" style="left:86%;top:90%">🪼</span>
+          <span class="p3-c" style="left:28%;top:36%">🐠</span>
+          <span class="p3-c" style="left:16%;top:54%">⭐</span>
+          <span class="p3-c" style="left:74%;top:52%">🐙</span>
+          <span class="p3-c" style="left:62%;top:76%">🦞</span>
+          <span class="p3-c" style="left:8%;top:22%">🦈</span>
+          <span class="p3-c" style="left:64%;top:18%">🦐</span>
+          <span class="p3-c" style="left:88%;top:42%">🐡</span>
+          <span class="p3-c" style="left:8%;top:68%">🦀</span>
+          <span class="p3-c" style="left:80%;top:70%">🦑</span>
+          <span class="p3-c" style="left:34%;top:52%">🐟</span>
+        </div>
+      </div>
+
+      <!-- Group 3: Dolphin — N: left 🪼🐢🪼🪼, diagonal 🐢🪼🐢, right 🐢🪼🪼🐢 -->
+      <div class="p3-group-panel" data-idx="2">
+        <div class="p3-creatures">
+          <span class="p3-c" style="left:16%;top:8%">🪼</span>
+          <span class="p3-c" style="left:16%;top:32%">🐢</span>
+          <span class="p3-c" style="left:16%;top:58%">🪼</span>
+          <span class="p3-c" style="left:16%;top:84%">🪼</span>
+          <span class="p3-c" style="left:36%;top:28%">🐢</span>
+          <span class="p3-c" style="left:52%;top:48%">🪼</span>
+          <span class="p3-c" style="left:68%;top:66%">🐢</span>
+          <span class="p3-c" style="left:84%;top:8%">🐢</span>
+          <span class="p3-c" style="left:84%;top:32%">🪼</span>
+          <span class="p3-c" style="left:84%;top:58%">🪼</span>
+          <span class="p3-c" style="left:84%;top:84%">🐢</span>
+          <span class="p3-c" style="left:50%;top:16%">🐠</span>
+          <span class="p3-c" style="left:34%;top:70%">🐡</span>
+          <span class="p3-c" style="left:64%;top:22%">⭐</span>
+          <span class="p3-c" style="left:50%;top:78%">🦑</span>
+          <span class="p3-c" style="left:8%;top:18%">🦀</span>
+          <span class="p3-c" style="left:8%;top:52%">🦐</span>
+          <span class="p3-c" style="left:40%;top:8%">🐙</span>
+          <span class="p3-c" style="left:62%;top:8%">🦞</span>
+          <span class="p3-c" style="left:30%;top:88%">🦈</span>
+          <span class="p3-c" style="left:64%;top:84%">🐚</span>
+        </div>
+      </div>
+
+      <!-- Group 4: Crab — H: left 🐢🪼🪼🐢, crossbar 🪼🐢🪼, right 🐢🪼🐢🐢 -->
+      <div class="p3-group-panel" data-idx="3">
+        <div class="p3-creatures">
+          <span class="p3-c" style="left:16%;top:8%">🐢</span>
+          <span class="p3-c" style="left:16%;top:35%">🪼</span>
+          <span class="p3-c" style="left:16%;top:60%">🪼</span>
+          <span class="p3-c" style="left:16%;top:86%">🐢</span>
+          <span class="p3-c" style="left:36%;top:47%">🪼</span>
+          <span class="p3-c" style="left:50%;top:47%">🐢</span>
+          <span class="p3-c" style="left:64%;top:47%">🪼</span>
+          <span class="p3-c" style="left:84%;top:8%">🐢</span>
+          <span class="p3-c" style="left:84%;top:35%">🪼</span>
+          <span class="p3-c" style="left:84%;top:60%">🐢</span>
+          <span class="p3-c" style="left:84%;top:86%">🐢</span>
+          <span class="p3-c" style="left:50%;top:20%">🐠</span>
+          <span class="p3-c" style="left:30%;top:72%">🦑</span>
+          <span class="p3-c" style="left:70%;top:74%">⭐</span>
+          <span class="p3-c" style="left:50%;top:76%">🐡</span>
+          <span class="p3-c" style="left:50%;top:8%">🦀</span>
+          <span class="p3-c" style="left:30%;top:20%">🦐</span>
+          <span class="p3-c" style="left:70%;top:20%">🦞</span>
+          <span class="p3-c" style="left:8%;top:47%">🐙</span>
+          <span class="p3-c" style="left:88%;top:47%">🦈</span>
+          <span class="p3-c" style="left:50%;top:90%">🐟</span>
+        </div>
+      </div>
+
+      <button class="scene-ctrl diary-ctrl" style="bottom:14px;left:14px;">📖</button>
+
+      <div class="p3-bottom">
+        <div class="p3-dots">
+          <div class="p3-dot active" data-dot="0"></div>
+          <div class="p3-dot" data-dot="1"></div>
+          <div class="p3-dot" data-dot="2"></div>
+          <div class="p3-dot" data-dot="3"></div>
+        </div>
+        <button id="p3-padlock">
+          <span id="p3-padlock-fallback">🔒</span>
+          <img src="file.svg" alt="chest" style="opacity:0;transition:opacity 0.3s;" onload="this.style.opacity='1';document.getElementById('p3-padlock-fallback').style.display='none';">
+        </button>
+      </div>
+
+    </div><!-- /#puzzle3-view -->
+
+    <!-- Decoder view -->
+    <div id="decoder-view" class="view">
+      <div class="decoder-layout">
+
+        <!-- Readout: selected creature → aligned letter → digit -->
+        <div class="decoder-readout">
+          <span id="readout-creature">Tap a creature</span>
+          <span id="readout-hint" style="font-size:11px;color:#4a7a9a;font-style:italic;letter-spacing:0.5px;">pick a letter → get a number</span>
+          <span id="readout-letter" style="display:none;">A</span>
+          <span id="readout-arrow" class="readout-arrow" style="display:none;">→</span>
+          <span id="readout-digit" style="display:none;">·</span>
+        </div>
+
+        <!-- The disk -->
+        <div class="disk-wrap">
+          <svg id="disk-svg" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+
+        <!-- Letter jump -->
+        <div class="letter-jump-wrap">
+          <div id="letter-jump"></div>
+        </div>
+
+        <!-- Scratchpad -->
+        <div class="scratchpad-wrap">
+          <div class="scratchpad-label">Scratchpad</div>
+          <textarea id="scratchpad" placeholder="Note your decoded letters here..."></textarea>
+        </div>
+
+        <!-- Creature reference -->
+        <div class="creature-guide-wrap">
+          <button class="guide-toggle" id="guide-toggle">▼ Creature guide</button>
+          <div id="creature-guide" class="creature-guide" style="display:none;"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+  <!-- /main -->
+
+  <!-- View toggle (escape room only) -->
+  <button id="view-toggle">⊕ Decoder</button>
+
+  <!-- Narrative overlay -->
+  <div id="narrative-overlay">
+    <div class="narr-text"><div class="narr-inner" id="narr-inner"></div></div>
+    <div class="narr-footer">
+      <div class="narr-timer-track"><div class="narr-timer-fill" id="narr-timer-fill"></div></div>
+      <button class="narr-skip" id="narr-skip">Continue →</button>
+    </div>
+  </div>
+
+  <!-- Cave lock modal -->
+  <div class="modal-overlay" id="cave-modal" style="display:none;">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close">✕</button>
+      <div class="modal-title">Enter the code</div>
+      <div class="modal-slots" id="modal-slots">
+        <div class="code-slot" id="slot-0"></div>
+        <div class="code-slot" id="slot-1"></div>
+        <div class="code-slot" id="slot-2"></div>
+        <div class="code-slot" id="slot-3"></div>
+      </div>
+      <div class="modal-numpad">
+        <button class="num-btn">1</button>
+        <button class="num-btn">2</button>
+        <button class="num-btn">3</button>
+        <button class="num-btn">4</button>
+        <button class="num-btn">5</button>
+        <button class="num-btn">6</button>
+        <button class="num-btn">7</button>
+        <button class="num-btn">8</button>
+        <button class="num-btn">9</button>
+        <button class="num-btn empty"></button>
+        <button class="num-btn">0</button>
+        <button class="num-btn del">⌫</button>
+      </div>
+      <div class="modal-hint" id="modal-hint"></div>
+    </div>
+  </div>
+
+  <!-- Diary modal — full-screen paged viewer -->
+  <div id="diary-modal">
+    <span id="diary-indicator">1 / 3</span>
+    <button id="diary-close">✕</button>
+    <img class="diary-page-img active" src="Diary1.JPG" alt="Page 1">
+    <img class="diary-page-img" src="Diary2.JPG" alt="Page 2">
+    <img class="diary-page-img" src="Diary3.JPG" alt="Page 3">
+    <button class="diary-nav" id="diary-prev">◀</button>
+    <button class="diary-nav" id="diary-next">▶</button>
+  </div>
+
+</div>
+<!-- /app -->
+
+<script>
+  // ── State ───────────────────────────────────────────────────────────────────
+  let currentStage = 0;
+  let currentScene = 'ocean'; // 'ocean' | 'cave' | 'puzzle3'
+  let currentView = 'scene';  // 'scene' | 'decoder'
+
+  // ── Narrative overlay ────────────────────────────────────────────────────────
+  let narrativeTimer = null;
+  let narrativeActive = false;
+
+  function showNarrative(text, sig, callback, hideSkip) {
+    // Prevent re-triggering if already showing
+    if (narrativeActive) return;
+    narrativeActive = true;
+
+    const overlay = document.getElementById('narrative-overlay');
+    const inner   = document.getElementById('narr-inner');
+    const fill    = document.getElementById('narr-timer-fill');
+    const skipBtn = document.getElementById('narr-skip');
+    skipBtn.style.display = hideSkip ? 'none' : '';
+
+    // Build content
+    inner.innerHTML = '';
+    const para = document.createElement('span');
+    para.textContent = text;
+    inner.appendChild(para);
+    if (sig) {
+      const sigEl = document.createElement('span');
+      sigEl.className = 'narr-sig';
+      sigEl.textContent = sig;
+      inner.appendChild(sigEl);
+    }
+
+    // Reset timer bar
+    fill.classList.remove('run');
+    fill.style.transition = 'none';
+    fill.style.transform = 'scaleX(1)';
+
+    overlay.classList.add('visible');
+
+    // Start 30-second countdown after a short paint delay
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      fill.style.transition = 'transform 30s linear';
+      fill.classList.add('run');
+    }));
+
+    function dismiss() {
+      clearTimeout(narrativeTimer);
+      skipBtn.removeEventListener('click', dismiss);
+      skipBtn.style.display = '';
+      overlay.classList.remove('visible');
+      narrativeActive = false;
+      setTimeout(callback, 400);
+    }
+
+    skipBtn.addEventListener('click', dismiss);
+    narrativeTimer = setTimeout(dismiss, 30000);
+  }
+
+  // ── Escape room ──────────────────────────────────────────────────────────────
+  function showEscapeRoom(skipNarrative) {
+    if (!skipNarrative) {
+      showNarrative(
+        'So. We are finally here.\n\nNow. The treasure — I ramble. Probably a lot. You would know.\n\nIt is down here. In the deep. Waiting.\n\nYou have — and I would draw your attention to the gauge at the top — a limited supply of oxygen.\n\nThree locks stand between you and what is yours. I would help you, but I am Captain Jack Sparrow, and captains do not do puzzles. We delegate. Off you go.',
+        '— CJS',
+        () => showEscapeRoom(true)
+      );
+      return;
+    }
+    document.getElementById('ocean-view').classList.add('active');
+    document.getElementById('oxygen-bar').style.display = 'block';
+    document.getElementById('view-toggle').style.display = 'block';
+    initDiary();
+    initModal();
+    initPuzzle1();
+    initPuzzle3();
+    startOxygenTimer();
+  }
+
+  // ── Oxygen timer ─────────────────────────────────────────────────────────────
+  let o2Timeout = null;
+  const O2_DURATION = 30 * 60 * 1000; // 30 minutes
+
+  function startOxygenTimer() {
+    const fill = document.getElementById('o2-fill');
+    // Reset bar to full instantly, then animate drain over 30 min
+    fill.style.transition = 'none';
+    fill.style.transform = 'scaleX(1)';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      fill.style.transition = `transform ${O2_DURATION / 1000}s linear`;
+      fill.style.transform = 'scaleX(0)';
+    }));
+    clearTimeout(o2Timeout);
+    o2Timeout = setTimeout(() => {
+      showNarrative(
+        'Uh-Oh, but today\'s your lucky day — you are getting extra time',
+        null,
+        () => startOxygenTimer()
+      );
+    }, O2_DURATION);
+  }
+
+  // ── Shared modal ─────────────────────────────────────────────────────────────
+  let codeEntry = '';
+  let modalCode = '';
+  let modalCallback = null;
+
+  function openModal(code, onCorrect) {
+    modalCode = code;
+    modalCallback = onCorrect;
+    codeEntry = '';
+    updateSlots();
+    document.getElementById('modal-hint').textContent = '';
+    document.getElementById('cave-modal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('cave-modal').style.display = 'none';
+  }
+
+  function updateSlots() {
+    for (let i = 0; i < 4; i++) {
+      const slot = document.getElementById(`slot-${i}`);
+      slot.textContent = codeEntry[i] || '';
+      slot.classList.toggle('active-slot', i === codeEntry.length);
+    }
+  }
+
+  function handleDigit(d) {
+    if (codeEntry.length >= 4) return;
+    codeEntry += d;
+    updateSlots();
+    if (codeEntry.length === 4) setTimeout(checkModalCode, 120);
+  }
+
+  function handleDelete() {
+    if (!codeEntry.length) return;
+    codeEntry = codeEntry.slice(0, -1);
+    updateSlots();
+    document.getElementById('modal-hint').textContent = '';
+  }
+
+  function checkModalCode() {
+    const hint = document.getElementById('modal-hint');
+    if (codeEntry === modalCode) {
+      hint.style.color = 'var(--gold)';
+      hint.textContent = '✓  The lock yields...';
+      setTimeout(() => {
+        closeModal();
+        if (modalCallback) modalCallback();
+      }, 1200);
+    } else {
+      hint.style.color = 'var(--text-dim)';
+      hint.textContent = 'That is not the code, mate.';
+      const slots = document.getElementById('modal-slots');
+      slots.classList.remove('shake');
+      void slots.offsetWidth;
+      slots.classList.add('shake');
+      setTimeout(() => { codeEntry = ''; updateSlots(); }, 500);
+    }
+  }
+
+  function initDiary() {
+    const modal = document.getElementById('diary-modal');
+    const imgs  = document.querySelectorAll('.diary-page-img');
+    const ind   = document.getElementById('diary-indicator');
+    let cur = 0;
+
+    function showPage(idx) {
+      cur = idx;
+      imgs.forEach((img, i) => img.classList.toggle('active', i === idx));
+      ind.textContent = `${idx + 1} / 3`;
+    }
+
+    function openDiary()  { showPage(0); modal.style.display = 'flex'; }
+    function closeDiary() { modal.style.display = 'none'; }
+
+    document.querySelectorAll('.diary-ctrl').forEach(btn => btn.addEventListener('click', openDiary));
+    document.getElementById('diary-close').addEventListener('click', closeDiary);
+    document.getElementById('diary-prev').addEventListener('click', () => showPage((cur - 1 + 3) % 3));
+    document.getElementById('diary-next').addEventListener('click', () => showPage((cur + 1) % 3));
+    modal.addEventListener('click', e => { if (e.target === modal) closeDiary(); });
+  }
+
+  function initModal() {
+    document.querySelectorAll('.num-btn').forEach(btn => {
+      const d = btn.textContent.trim();
+      if (d === '⌫') {
+        btn.addEventListener('click', handleDelete);
+      } else if (d && !btn.classList.contains('empty')) {
+        btn.addEventListener('click', () => handleDigit(d));
+      }
+    });
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('cave-modal').addEventListener('click', function (e) {
+      if (e.target === this) closeModal();
+    });
+    updateSlots();
+  }
+
+  // ── Cave transition ───────────────────────────────────────────────────────────
+  function openCave(skipNarrative) {
+    if (!skipNarrative) {
+      showNarrative(
+        'One down. The cave remembers everything, mate. Every captain who sheltered here. Every secret left behind.\n\nLook around carefully.',
+        '— CJS',
+        () => openCave(true)
+      );
+      return;
+    }
+    currentScene = 'cave';
+    document.getElementById('ocean-view').classList.remove('active');
+    document.getElementById('cave-view').classList.add('active');
+    document.getElementById('view-toggle').textContent = '⊕ Decoder';
+    initPuzzle2();
+    initPuzzle3(); // pre-wire so buttons are ready before hatch opens
+  }
+
+  // ── Puzzle 1 — ocean scene ────────────────────────────────────────────────────
+  let puzzle1Inited = false;
+  function initPuzzle1() {
+    if (puzzle1Inited) return;
+    puzzle1Inited = true;
+
+    const SCENE_CREATURES = [
+      // Password creatures (assigned colours used for glow)
+      { svgFile: 'clownfish.svg',  name: 'Clownfish',  bright: true,  col: '#ff7b00', x: 10, y: 48, size: 40 },
+      { svgFile: 'starfish.svg',   name: 'Starfish',   bright: true,  col: '#ff3b30', x: 30, y: 65, size: 40 },
+      { sym: '🐢', emoji: true,    name: 'Turtle',     bright: true,  col: '#30d158', x: 62, y: 46, size: 36 },
+      { sym: '🪼', emoji: true,    name: 'Jellyfish',  bright: true,  col: '#2d7dd2', x: 82, y: 28, size: 36 },
+      // Background dwellers
+      { svgFile: 'seahorse.svg',   name: 'Seahorse',   bright: false, col: '#4a8fa8', x: 22, y: 20, size: 38 },
+      { sym: '🦀',  emoji: true,   name: 'Crab',       bright: false, col: '#4a8fa8', x: 20, y: 82, size: 36 },
+      { svgFile: 'eel.svg',        name: 'Eel',        bright: false, col: '#4a8fa8', x:  8, y: 62, size: 48 },
+      { sym: '🐡',  emoji: true,   name: 'Pufferfish', bright: false, col: '#4a8fa8', x: 86, y: 52, size: 36 },
+      { sym: '🐙',  emoji: true,   name: 'Octopus',    bright: false, col: '#4a8fa8', x: 78, y: 78, size: 36 },
+      { svgFile: 'anglerfish.svg', name: 'Anglerfish', bright: false, col: '#4a8fa8', x: 88, y: 70, size: 44 },
+      // Extra creatures to fill the scene
+      { sym: '🐬', emoji: true,    name: 'Dolphin',    bright: false, col: '#4a8fa8', x: 50, y:  8, size: 36 },
+      { sym: '🐳', emoji: true,    name: 'Whale',      bright: false, col: '#4a8fa8', x: 70, y: 15, size: 40 },
+      { sym: '🦈', emoji: true,    name: 'Shark',      bright: false, col: '#4a8fa8', x: 14, y: 10, size: 36 },
+      { sym: '🦑', emoji: true,    name: 'Squid',      bright: false, col: '#4a8fa8', x: 55, y: 32, size: 36 },
+      { sym: '🦞', emoji: true,    name: 'Lobster',    bright: false, col: '#4a8fa8', x: 42, y: 56, size: 36 },
+      { sym: '🦐', emoji: true,    name: 'Shrimp',     bright: false, col: '#4a8fa8', x: 66, y: 68, size: 34 },
+      { sym: '🐚', emoji: true,    name: 'Nautilus',   bright: false, col: '#4a8fa8', x: 28, y: 80, size: 34 },
+      { sym: '🦭', emoji: true,    name: 'Seal',       bright: false, col: '#4a8fa8', x: 36, y: 38, size: 36 },
+      { sym: '🦀', emoji: true,    name: 'Crab',       bright: false, col: '#4a8fa8', x: 58, y: 88, size: 34 },
+      { sym: '🐠', emoji: true,    name: 'Clownfish',  bright: false, col: '#4a8fa8', x: 74, y: 90, size: 34 },
+      // More non-turtle/jellyfish to fill remaining gaps
+      { svgFile: 'clownfish.svg',  name: 'Clownfish',  bright: false, col: '#4a8fa8', x: 44, y: 18, size: 36 },
+      { sym: '🐡',  emoji: true,   name: 'Pufferfish', bright: false, col: '#4a8fa8', x:  4, y: 30, size: 34 },
+      { sym: '🦈', emoji: true,    name: 'Shark',      bright: false, col: '#4a8fa8', x: 62, y: 78, size: 36 },
+      { sym: '🐙',  emoji: true,   name: 'Octopus',    bright: false, col: '#4a8fa8', x: 34, y: 92, size: 34 },
+      { sym: '🦑', emoji: true,    name: 'Squid',      bright: false, col: '#4a8fa8', x: 92, y: 40, size: 34 },
+      { sym: '🐬', emoji: true,    name: 'Dolphin',    bright: false, col: '#4a8fa8', x: 26, y: 50, size: 34 },
+      { svgFile: 'starfish.svg',   name: 'Starfish',   bright: false, col: '#4a8fa8', x: 72, y: 55, size: 34 },
+      { sym: '🦐', emoji: true,    name: 'Shrimp',     bright: false, col: '#4a8fa8', x: 90, y: 88, size: 30 },
+    ];
+
+    // Render creatures
+    const container = document.getElementById('creatures-container');
+    SCENE_CREATURES.forEach(c => {
+      const div = document.createElement('div');
+      div.className = c.bright ? 'creature bright' : 'creature';
+      div.style.left = `${c.x}%`;
+      div.style.top = `${c.y}%`;
+      div.style.setProperty('--col', c.col);
+
+      const sym = document.createElement('span');
+      sym.className = 'creature-sym';
+      if (c.svgFile) {
+        const img = document.createElement('img');
+        img.src = c.svgFile;
+        img.style.width = `${c.size}px`;
+        img.style.height = `${c.size}px`;
+        img.style.display = 'block';
+        img.style.filter = `drop-shadow(0 0 6px ${c.col})`;
+        sym.appendChild(img);
+      } else if (c.emoji) {
+        sym.style.fontSize = `${c.size}px`;
+        sym.style.fontFamily = 'Apple Color Emoji, sans-serif';
+        sym.style.filter = `drop-shadow(0 0 6px ${c.col})`;
+        sym.textContent = c.sym;
+      } else {
+        sym.style.fontSize = `${c.size}px`;
+        sym.style.fontFamily = 'monospace';
+        sym.style.fontWeight = 'bold';
+        sym.style.color = c.col;
+        sym.style.letterSpacing = '1px';
+        sym.textContent = c.sym;
+      }
+
+      div.appendChild(sym);
+      container.appendChild(div);
+    });
+
+    // ── Night mode toggle ──────────────────────────────────────────────────────
+    const nightBtn = document.getElementById('night-ctrl');
+    let nightMode = false;
+    nightBtn.addEventListener('click', function () {
+      nightMode = !nightMode;
+      document.getElementById('ocean-view').classList.toggle('night-mode', nightMode);
+      this.classList.toggle('night-active', nightMode);
+      this.textContent = nightMode ? '☀️' : '';
+    });
+
+    // ── Diary modal ────────────────────────────────────────────────────────────
+    initDiary();
+
+    document.getElementById('cave-entrance').addEventListener('click', () => openModal('0205', openCave));
+  }
+
+  // ── View toggle ──────────────────────────────────────────────────────────────
+  const sceneViewId = { ocean: 'ocean-view', cave: 'cave-view', puzzle3: 'puzzle3-view' };
+  const sceneLabel  = { ocean: '◉ Ocean',    cave: '◉ Cave',     puzzle3: '◉ Stars'      };
+
+  document.getElementById('view-toggle').addEventListener('click', function () {
+    const vid = sceneViewId[currentScene];
+    if (currentView === 'scene') {
+      currentView = 'decoder';
+      document.getElementById(vid).classList.remove('active');
+      document.getElementById('decoder-view').classList.add('active');
+      this.textContent = sceneLabel[currentScene];
+    } else {
+      currentView = 'scene';
+      document.getElementById('decoder-view').classList.remove('active');
+      document.getElementById(vid).classList.add('active');
+      this.textContent = '⊕ Decoder';
+    }
+  });
+
+  // ── Puzzle 2 — cave interior ─────────────────────────────────────────────────
+  let puzzle2Inited = false;
+  function initPuzzle2() {
+    if (puzzle2Inited) return;
+    puzzle2Inited = true;
+
+    const caveView = document.getElementById('cave-view');
+
+    function svgPt(sx, sy) {
+      const vw = caveView.offsetWidth, vh = caveView.offsetHeight;
+      const sc = Math.max(vw / 1200, vh / 750);
+      return { x: sx * sc + (vw - 1200 * sc) / 2, y: sy * sc + (vh - 750 * sc) / 2, sc };
+    }
+
+    function layout() {
+      if (!caveView.classList.contains('active')) return;
+      const sc = svgPt(0, 0).sc;
+
+      const htl = svgPt(448, 562), hbr = svgPt(752, 638);
+      const hw = document.getElementById('hatch-wrap');
+      hw.style.left = htl.x + 'px'; hw.style.top = htl.y + 'px';
+      hw.style.width = (hbr.x - htl.x) + 'px'; hw.style.height = (hbr.y - htl.y) + 'px';
+
+      const plp = svgPt(658, 578);
+      const pw = document.getElementById('cave2-padlock');
+      pw.style.left = plp.x + 'px'; pw.style.top = plp.y + 'px';
+      pw.style.transformOrigin = '0 0'; pw.style.transform = `scale(${sc})`;
+
+      const hp = svgPt(600, 668);
+      const hint = document.getElementById('hatch-hint');
+      hint.style.left = hp.x + 'px'; hint.style.top = hp.y + 'px';
+      hint.style.transform = 'translateX(-50%)';
+
+      const tl = svgPt(310, 408);
+      const tfl = document.getElementById('cave-torch-l');
+      tfl.style.left = tl.x + 'px'; tfl.style.top = tl.y + 'px';
+      tfl.style.transformOrigin = '0 0'; tfl.style.transform = `scale(${sc * 1.1})`;
+
+      const tr = svgPt(856, 408);
+      const tfr = document.getElementById('cave-torch-r');
+      tfr.style.left = tr.x + 'px'; tfr.style.top = tr.y + 'px';
+      tfr.style.transformOrigin = '0 0'; tfr.style.transform = `scale(${sc * 1.1})`;
+    }
+
+    layout();
+    window.addEventListener('resize', layout);
+
+    // Animate SVG water waves
+    const wave1 = document.getElementById('wave1');
+    const wave2 = document.getElementById('wave2');
+    const wave3 = document.getElementById('wave3');
+    let wt = 0;
+    function animateWaves() {
+      wt += 0.012;
+      const A = 5, B = 4, C = 3;
+      wave1.setAttribute('d', `M0,${590+A*Math.sin(wt)} Q200,${582+A*Math.sin(wt+1)} 400,${590+A*Math.sin(wt+2)} Q600,${598+A*Math.sin(wt+3)} 800,${590+A*Math.sin(wt+4)} Q1000,${582+A*Math.sin(wt+5)} 1200,${590+A*Math.sin(wt+6)}`);
+      wave2.setAttribute('d', `M0,${614+B*Math.sin(wt*0.8+1)} Q300,${608+B*Math.sin(wt*0.8+2)} 600,${614+B*Math.sin(wt*0.8+3)} Q900,${620+B*Math.sin(wt*0.8+4)} 1200,${614+B*Math.sin(wt*0.8+5)}`);
+      wave3.setAttribute('d', `M0,${638+C*Math.sin(wt*0.6+2)} Q300,${632+C*Math.sin(wt*0.6+3)} 600,${638+C*Math.sin(wt*0.6+4)} Q900,${644+C*Math.sin(wt*0.6+5)} 1200,${638+C*Math.sin(wt*0.6+6)}`);
+      requestAnimationFrame(animateWaves);
+    }
+    animateWaves();
+
+    // Water glints
+    for (let i = 0; i < 20; i++) {
+      const g = document.createElement('div');
+      g.className = 'water-glint';
+      const s = 2 + Math.random() * 4;
+      g.style.cssText = `width:${s}px;height:${s}px;left:${20+Math.random()*60}%;top:${68+Math.random()*18}%;--dur:${(1.5+Math.random()*3).toFixed(1)}s;--delay:${(Math.random()*5).toFixed(2)}s;`;
+      caveView.appendChild(g);
+    }
+
+    // Dust motes
+    for (let i = 0; i < 18; i++) {
+      const m = document.createElement('div');
+      m.className = 'mote';
+      const sz = 1.5 + Math.random() * 2;
+      m.style.cssText = `width:${sz}px;height:${sz}px;left:${12+Math.random()*22}%;bottom:${28+Math.random()*50}%;--dur:${(5+Math.random()*8).toFixed(1)}s;--delay:${(Math.random()*10).toFixed(2)}s;--dx:${(Math.random()*28-14).toFixed(0)}px;`;
+      caveView.appendChild(m);
+    }
+
+    // Hatch tap → modal
+    document.getElementById('hatch-door').addEventListener('click', () => openModal('1992', openHatch));
+    document.getElementById('cave2-padlock').addEventListener('click', () => openModal('1992', openHatch));
+  }
+
+  function openHatch() {
+    document.getElementById('hatch-door').classList.add('open');
+    document.getElementById('cave2-padlock').classList.add('unlocked');
+    setTimeout(() => {
+      document.getElementById('cave2-padlock').style.display = 'none';
+      document.getElementById('hatch-hint').style.display = 'none';
+    }, 1000);
+    setTimeout(() => {
+      showNarrative(
+        'Remarkable. I don\'t say that often. I usually complain a lot, not compliment. Ask anyone. Well — ask the people who know me well.\n\nYou are deeper now than most people dare to go. The treasure is ahead. Almost within reach. One final thing stands between you and it. The creatures will show you the way — if you know how to read them.',
+        '— CJS',
+        () => {
+          currentScene = 'puzzle3';
+          currentView = 'scene';
+          document.getElementById('cave-view').classList.remove('active');
+          document.getElementById('puzzle3-view').classList.add('active');
+          document.getElementById('view-toggle').textContent = '⊕ Decoder';
+          initPuzzle3();
+        }
+      );
+    }, 2400);
+  }
+
+  // ── Puzzle 3 — constellations ─────────────────────────────────────────────
+  let puzzle3Inited = false;
+  function initPuzzle3() {
+    if (puzzle3Inited) return;
+    puzzle3Inited = true;
+
+    const leaders = [
+      { sym: '🐳', name: 'Whale'   },
+      { sym: '🦈', name: 'Shark'   },
+      { sym: '🐬', name: 'Dolphin' },
+      { sym: '🦀', name: 'Crab'    },
+    ];
+    const panels = document.querySelectorAll('.p3-group-panel');
+    const dots   = document.querySelectorAll('.p3-dot');
+    let cur = 0;
+
+    function showGroup(idx) {
+      cur = idx;
+      panels.forEach((p, i) => p.classList.toggle('active', i === idx));
+      dots.forEach((d, i)   => d.classList.toggle('active', i === idx));
+      document.getElementById('p3-header-sym').textContent  = leaders[idx].sym;
+      document.getElementById('p3-header-meta').textContent = `${idx + 1} · ${leaders[idx].name}`;
+    }
+
+    document.getElementById('p3-prev').addEventListener('click', () => showGroup((cur - 1 + 4) % 4));
+    document.getElementById('p3-next').addEventListener('click', () => showGroup((cur + 1) % 4));
+    dots.forEach((d, i) => d.addEventListener('click', () => showGroup(i)));
+    document.getElementById('p3-padlock').addEventListener('click', () => openModal('0428', openFinalReveal));
+  }
+
+  function openFinalReveal() {
+    document.getElementById('view-toggle').style.display = 'none';
+
+    const msg = document.createElement('div');
+    msg.style.cssText = 'position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998;pointer-events:none;text-align:center;padding:40px;';
+    msg.innerHTML =
+      '<div style="font-family:Georgia,serif;color:#c9a84c;font-size:24px;letter-spacing:5px;text-transform:uppercase;opacity:0;animation:fadeIn 0.8s ease 0.3s forwards;">You did it.</div>' +
+      '<div style="font-family:Georgia,serif;color:#c8dce8;font-size:15px;letter-spacing:1px;margin-top:16px;line-height:1.7;opacity:0;animation:fadeIn 0.8s ease 1s forwards;">The treasure is yours, mate.</div>' +
+      '<div style="font-family:Georgia,serif;color:rgba(201,168,76,0.7);font-size:13px;letter-spacing:1px;font-style:italic;margin-top:20px;opacity:0;animation:fadeIn 0.8s ease 1.6s forwards;">— CJS</div>';
+    document.body.appendChild(msg);
+
+    launchConfetti();
+  }
+
+  function launchConfetti() {
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ['#c9a84c', '#44cc88', '#4a9adf', '#e87040', '#cc88ff', '#ffffff', '#ff6688'];
+    const particles = Array.from({ length: 140 }, () => ({
+      x: Math.random() * canvas.width,
+      y: -20 - Math.random() * 120,
+      w: 7 + Math.random() * 8,
+      h: 3 + Math.random() * 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rot: Math.random() * Math.PI * 2,
+      vx: (Math.random() - 0.5) * 3,
+      vy: 1.5 + Math.random() * 3,
+      vr: (Math.random() - 0.5) * 0.18,
+      opacity: 1,
+    }));
+
+    let startTime = null;
+    const DURATION = 3500;
+
+    function animate(ts) {
+      if (!startTime) startTime = ts;
+      const elapsed = ts - startTime;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      let anyVisible = false;
+      particles.forEach(p => {
+        p.x  += p.vx;
+        p.y  += p.vy;
+        p.vy += 0.06;
+        p.rot += p.vr;
+        if (elapsed > DURATION * 0.6) p.opacity = Math.max(0, p.opacity - 0.018);
+        if (p.y < canvas.height + 20 && p.opacity > 0) anyVisible = true;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+
+      if (anyVisible) requestAnimationFrame(animate);
+      else canvas.remove();
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  // ── Decoder disk ─────────────────────────────────────────────────────────────
+  function initDecoder() {
+    const STEP = 360 / 26;
+    const CX = 150, CY = 150;
+    const R_CREATURE = 116, R_LETTER = 78, R_DIGIT = 50;
+    const svgNS = 'http://www.w3.org/2000/svg';
+
+    // sym: emoji or 3-char text. emoji rendered larger, text smaller.
+    const CREATURES = [
+      { svgFile: 'clownfish.svg',  name: 'Clownfish'   },
+      { svgFile: 'seahorse.svg',   name: 'Seahorse'    },
+      { svgFile: 'starfish.svg',   name: 'Starfish'    },
+      { sym: '🦞',  emoji: true,  name: 'Lobster'     },
+      { sym: '🦀',  emoji: true,  name: 'Crab'        },
+      { sym: '🦑',  emoji: true,  name: 'Squid'       },
+      { sym: '🐢',  emoji: true,  name: 'Turtle'      },
+      { sym: '🪼',  emoji: true,  name: 'Jellyfish'   },
+      { svgFile: 'eel.svg',        name: 'Eel'         },
+      { sym: '🐡',  emoji: true,  name: 'Pufferfish'  },
+      { sym: '🐙',  emoji: true,  name: 'Octopus'     },
+      { svgFile: 'anglerfish.svg', name: 'Anglerfish'  },
+      { sym: '🦐',  emoji: true,  name: 'Shrimp'      },
+      { sym: '🦭',  emoji: true,  name: 'Seal'        },
+      { sym: '🐚',  emoji: true,  name: 'Nautilus'    },
+      { sym: '🐳',  emoji: true,  name: 'Whale'       },
+      { sym: '🦈',  emoji: true,  name: 'Shark'       },
+      { sym: '🐬',  emoji: true,  name: 'Dolphin'     },
+      { svgFile: 'ray.svg',        name: 'Manta Ray'   },
+      { svgFile: 'flounder.svg',   name: 'Flounder'    },
+      { svgFile: 'barracuda.svg',  name: 'Barracuda'   },
+      { svgFile: 'swordfish.svg',  name: 'Swordfish'   },
+      { svgFile: 'tuna.svg',       name: 'Tuna'        },
+      { svgFile: 'sealion.svg',    name: 'Sea Lion'    },
+      { svgFile: 'hammerhead.svg', name: 'Hammerhead'  },
+      { svgFile: 'urchin.svg',     name: 'Sea Urchin'  },
+    ];
+
+    const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    // A=9,B=5,C=3,D=7,E=6,F=1,G=0,H=8,I=1,J=2,K=6,L=3,M=7,
+    // N=2,O=0,P=5,Q=8,R=2,S=4,T=0,U=6,V=0,W=9,X=1,Y=9,Z=4
+    const RING3 = [9,5,3,7,6,1,0,8,1,2,6,3,7,2,0,5,8,2,4,0,6,0,9,1,9,4];
+
+    let ring1Rotation = 0; // Ring 1 rotates automatically on creature tap
+    let ring2Rotation = 0; // Ring 2 rotates manually
+    let isDragging = false;
+    let dragStartAngle = 0;
+    let dragStartRotation = 0;
+
+    const svg = document.getElementById('disk-svg');
+
+    function mk(tag, attrs, parent) {
+      const el = document.createElementNS(svgNS, tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      if (parent) parent.appendChild(el);
+      return el;
+    }
+
+    function radialPos(i, r) {
+      const a = (i * STEP - 90) * Math.PI / 180;
+      return { x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) };
+    }
+
+    // ── Backgrounds ────────────────────────────────────────────────────────────
+    mk('circle', { cx: CX, cy: CY, r: 140, fill: '#071221' }, svg);
+    mk('circle', { cx: CX, cy: CY, r: 136, fill: '#0d1f3c' }, svg);
+    mk('circle', { cx: CX, cy: CY, r: 97,  fill: '#091830' }, svg);
+    mk('circle', { cx: CX, cy: CY, r: 62,  fill: '#0d2244' }, svg);
+    mk('circle', { cx: CX, cy: CY, r: 36,  fill: '#071221' }, svg);
+
+    // ── Ring 2+3 rotating group ─────────────────────────────────────────────────
+    const ring23 = mk('g', { id: 'ring23' }, svg);
+
+    // Ring 3 digits hidden from disc — only the aligned digit shown in centre
+
+    for (let i = 0; i < 26; i++) {
+      const { x, y } = radialPos(i, R_LETTER);
+      const t = mk('text', {
+        x, y, 'text-anchor': 'middle', 'dominant-baseline': 'middle',
+        fill: '#e8f4f8', 'font-size': '13', 'font-family': 'Georgia, serif', 'font-weight': 'bold',
+      }, ring23);
+      t.textContent = LETTERS[i];
+    }
+
+    // ── Ring 1: creatures (rotatable via tap) ──────────────────────────────────
+    const ring1 = mk('g', { id: 'ring1' }, svg);
+
+    // Creature symbols + invisible tap targets
+    for (let i = 0; i < 26; i++) {
+      const { x, y } = radialPos(i, R_CREATURE);
+      const c = CREATURES[i];
+
+      if (c.svgFile) {
+        const S = 18;
+        mk('image', {
+          href: c.svgFile, x: x - S / 2, y: y - S / 2,
+          width: S, height: S,
+          preserveAspectRatio: 'xMidYMid meet',
+          'pointer-events': 'none',
+        }, ring1);
+      } else {
+        const t = mk('text', {
+          x, y, 'text-anchor': 'middle', 'dominant-baseline': 'middle',
+          fill: c.emoji ? '#e8f4f8' : '#7aa8c4',
+          'font-size': c.emoji ? '13' : '6.5',
+          'font-family': c.emoji ? 'Apple Color Emoji, sans-serif' : 'monospace',
+          'letter-spacing': '0.4',
+          'pointer-events': 'none',
+        }, ring1);
+        t.textContent = c.sym;
+      }
+
+      const hit = mk('circle', {
+        cx: x, cy: y, r: 13,
+        fill: 'transparent', cursor: 'pointer',
+      }, ring1);
+
+      hit.addEventListener('click', () => spinCreatureToMarker(i));
+      hit.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        spinCreatureToMarker(i);
+      }, { passive: false });
+    }
+
+    // ── Ring borders ────────────────────────────────────────────────────────────
+    mk('circle', { cx: CX, cy: CY, r: 136, fill: 'none', stroke: '#1a4a7a', 'stroke-width': '1.5' }, svg);
+    mk('circle', { cx: CX, cy: CY, r: 97,  fill: 'none', stroke: '#1a4a7a', 'stroke-width': '1'   }, svg);
+    mk('circle', { cx: CX, cy: CY, r: 62,  fill: 'none', stroke: '#c9a84c', 'stroke-width': '1.5' }, svg);
+    mk('circle', { cx: CX, cy: CY, r: 36,  fill: 'none', stroke: '#1a4a7a', 'stroke-width': '1'   }, svg);
+
+    // ── Centre digit display (Ring 3 revealed here only) ───────────────────────
+    const centreDigit = mk('text', {
+      id: 'centre-digit',
+      x: CX, y: CY + 1,
+      'text-anchor': 'middle', 'dominant-baseline': 'middle',
+      fill: '#f0c96a', 'font-size': '28', 'font-family': 'Georgia, serif', 'font-weight': 'bold',
+    }, svg);
+    centreDigit.textContent = '·';
+
+    // ── Alignment indicator at top ──────────────────────────────────────────────
+    mk('polygon', { points: `${CX},14 ${CX-5},5 ${CX+5},5`, fill: '#c9a84c' }, svg);
+    mk('line', {
+      x1: CX, y1: 14, x2: CX, y2: 65,
+      stroke: '#c9a84c', 'stroke-width': '1', 'stroke-dasharray': '2,3', opacity: '0.5',
+    }, svg);
+
+    // ── Rotation helpers ─────────────────────────────────────────────────────────
+    function applyRing1(deg) {
+      ring1.setAttribute('transform', `rotate(${deg}, ${CX}, ${CY})`);
+    }
+
+    function applyRing2(deg) {
+      ring23.setAttribute('transform', `rotate(${deg}, ${CX}, ${CY})`);
+    }
+
+    let creatureTapped = false;
+    let letterMoved = false;
+
+    function updateReadout(fromTap, fromLetter) {
+      if (fromTap) creatureTapped = true;
+      if (fromLetter) letterMoved = true;
+      // Creature currently at the marker (top)
+      const creatureIdx = Math.round(((-ring1Rotation % 360) + 360) % 360 / STEP) % 26;
+      // Letter currently at the marker (top)
+      const letterIdx = Math.round(((-ring2Rotation % 360) + 360) % 360 / STEP) % 26;
+      const el = document.getElementById('readout-creature');
+      if (creatureTapped) {
+        el.textContent = CREATURES[creatureIdx].name;
+        el.classList.add('selected');
+      }
+      if (letterMoved) {
+        document.getElementById('readout-hint').style.display   = 'none';
+        document.getElementById('readout-letter').style.display = '';
+        document.getElementById('readout-arrow').style.display  = '';
+        document.getElementById('readout-digit').style.display  = '';
+        document.getElementById('readout-letter').textContent = LETTERS[letterIdx];
+        document.getElementById('readout-digit').textContent  = RING3[letterIdx];
+      } else {
+        document.getElementById('readout-hint').style.display   = '';
+        document.getElementById('readout-letter').style.display = 'none';
+        document.getElementById('readout-arrow').style.display  = 'none';
+        document.getElementById('readout-digit').style.display  = 'none';
+      }
+      document.getElementById('centre-digit').textContent = letterMoved ? RING3[letterIdx] : '·';
+    }
+
+    function animate(getCurrent, setCurrent, target, duration, onDone) {
+      const from = getCurrent();
+      let diff = ((target - from + 180) % 360 + 360) % 360 - 180;
+      const finalTarget = from + diff;
+      const start = performance.now();
+      function step(now) {
+        const t = Math.min((now - start) / duration, 1);
+        const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+        setCurrent(from + diff * ease);
+        updateReadout();
+        if (t < 1) { requestAnimationFrame(step); }
+        else { setCurrent(finalTarget); if (onDone) onDone(); }
+      }
+      requestAnimationFrame(step);
+    }
+
+    // Spin Ring 1 so creature i arrives at the marker
+    function spinCreatureToMarker(i) {
+      letterMoved = false;
+      animate(
+        () => ring1Rotation,
+        (v) => { ring1Rotation = v; applyRing1(v); },
+        -(i * STEP), 360,
+        () => updateReadout(true, false)
+      );
+    }
+
+    // Snap Ring 2 to nearest letter
+    function snapRing2() {
+      const norm = ((-ring2Rotation % 360) + 360) % 360;
+      const target = -(Math.round(norm / STEP) * STEP);
+      animate(
+        () => ring2Rotation,
+        (v) => { ring2Rotation = v; applyRing2(v); },
+        target, 120,
+        () => updateReadout(false, true)
+      );
+    }
+
+    // Jump Ring 2 directly to letter i
+    function jumpToLetter(i) {
+      animate(
+        () => ring2Rotation,
+        (v) => { ring2Rotation = v; applyRing2(v); },
+        -(i * STEP), 220,
+        () => updateReadout(false, true)
+      );
+    }
+
+    function angleFromCenter(clientX, clientY) {
+      const rect = svg.getBoundingClientRect();
+      return Math.atan2(clientY - (rect.top + rect.height/2), clientX - (rect.left + rect.width/2)) * 180 / Math.PI;
+    }
+
+    // ── Touch drag (Ring 2 only — inner two rings) ───────────────────────────────
+    function distFromCenter(clientX, clientY) {
+      const rect = svg.getBoundingClientRect();
+      const scale = rect.width / 300;
+      const dx = clientX - (rect.left + rect.width/2);
+      const dy = clientY - (rect.top + rect.height/2);
+      return Math.sqrt(dx*dx + dy*dy) / scale;
+    }
+
+    svg.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      if (distFromCenter(t.clientX, t.clientY) > 97) return; // Ring 1 area — ignore
+      dragStartAngle = angleFromCenter(t.clientX, t.clientY);
+      dragStartRotation = ring2Rotation;
+      isDragging = true;
+    }, { passive: true });
+
+    svg.addEventListener('touchmove', (e) => {
+      if (!isDragging || e.touches.length !== 1) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      ring2Rotation = dragStartRotation + (angleFromCenter(t.clientX, t.clientY) - dragStartAngle);
+      applyRing2(ring2Rotation);
+      updateReadout();
+    }, { passive: false });
+
+    svg.addEventListener('touchend', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      snapRing2();
+    }, { passive: true });
+
+    svg.addEventListener('mousedown', (e) => {
+      if (distFromCenter(e.clientX, e.clientY) > 97) return;
+      dragStartAngle = angleFromCenter(e.clientX, e.clientY);
+      dragStartRotation = ring2Rotation;
+      isDragging = true;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      ring2Rotation = dragStartRotation + (angleFromCenter(e.clientX, e.clientY) - dragStartAngle);
+      applyRing2(ring2Rotation);
+      updateReadout();
+    });
+    window.addEventListener('mouseup', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      snapRing2();
+    });
+
+    // ── Letter jump ──────────────────────────────────────────────────────────────
+    const jumpContainer = document.getElementById('letter-jump');
+    LETTERS.forEach((letter, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'jump-btn';
+      btn.textContent = letter;
+      btn.addEventListener('click', () => jumpToLetter(i));
+      jumpContainer.appendChild(btn);
+    });
+
+    // ── Creature guide (tapping also spins Ring 1) ───────────────────────────────
+    const guide = document.getElementById('creature-guide');
+    CREATURES.forEach((c, i) => {
+      const item = document.createElement('div');
+      item.className = 'creature-item';
+      let iconHtml;
+      if (c.svgFile) {
+        iconHtml = `<img src="${c.svgFile}" style="width:22px;height:22px;object-fit:contain;display:block;">`;
+      } else {
+        iconHtml = `<span class="creature-abbr" style="font-family:${c.emoji ? 'Apple Color Emoji,sans-serif' : 'monospace'}">${c.sym}</span>`;
+      }
+      item.innerHTML = `${iconHtml}<span>${c.name}</span>`;
+      item.style.cursor = 'pointer';
+      item.addEventListener('click', () => spinCreatureToMarker(i));
+      guide.appendChild(item);
+    });
+
+    document.getElementById('guide-toggle').addEventListener('click', function () {
+      const g = document.getElementById('creature-guide');
+      const open = g.style.display !== 'none';
+      g.style.display = open ? 'none' : 'grid';
+      this.textContent = open ? '▼ Creature guide' : '▲ Creature guide';
+    });
+
+    updateReadout();
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  initDecoder();
+  const _params = new URLSearchParams(location.search);
+  if (_params.has('preview')) {
+    showEscapeRoom(true);
+  } else {
+    showEscapeRoom();
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a1628;
+      color: #e8f4f8;
+      font-family: Georgia, serif;
+      padding: 24px 16px 60px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 18px;
+      letter-spacing: 2px;
+      color: #c9a84c;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: #4a7a9a;
+      letter-spacing: 1px;
+      margin-bottom: 28px;
+    }
+
+    .stage-card {
+      background: #0d1f3c;
+      border: 1px solid #1a4a7a;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .stage-card.done {
+      border-color: #1a5a2a;
+      background: #0a1e12;
+    }
+
+    .stage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .stage-name {
+      font-size: 15px;
+      font-weight: bold;
+      color: #e8f4f8;
+    }
+
+    .stage-badge {
+      font-size: 11px;
+      letter-spacing: 1px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+    }
+
+    .badge-pending  { background: #1a3a5a; color: #7ab4cc; }
+    .badge-approved { background: #1a4a28; color: #44cc88; }
+    .badge-failed   { background: #4a1a1a; color: #cc4444; }
+
+    .stage-desc {
+      font-size: 12px;
+      color: #4a7a9a;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity 0.15s;
+    }
+    .btn:active { opacity: 0.7; }
+
+    .btn-approve {
+      background: #1a6a3a;
+      color: #88ffbb;
+      border: 1px solid #2a8a4a;
+    }
+
+    .btn-fail {
+      background: #6a1a1a;
+      color: #ffaaaa;
+      border: 1px solid #8a2a2a;
+    }
+
+    .btn-reset {
+      background: #1a2a4a;
+      color: #7ab4cc;
+      border: 1px solid #2a4a6a;
+    }
+
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .status-bar {
+      text-align: center;
+      font-size: 12px;
+      color: #4a7a9a;
+      margin-top: 20px;
+      letter-spacing: 1px;
+    }
+
+    .status-bar.error { color: #cc4444; }
+    .status-bar.ok    { color: #44cc88; }
+
+    .refresh-btn {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: #0d1f3c;
+      border: 1px solid #1a4a7a;
+      border-radius: 10px;
+      color: #7ab4cc;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      margin-top: 8px;
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+<body>
+
+<h1>⚓ Admin</h1>
+<div class="subtitle">Escape Room · Stage Control</div>
+
+<div id="cards">
+  <div class="status-bar">Loading · · ·</div>
+</div>
+
+<button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
+<div class="status-bar" id="status-msg"></div>
+
+<script>
+  const SUPABASE_URL = 'https://ukuxmgplmfgyhjklogpb.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrdXhtZ3BsbWZneWhqa2xvZ3BiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMTE4NzAsImV4cCI6MjA5MjU4Nzg3MH0.N_yhsJyjO9Uc6iMf_Vu0MyFIznfI3p-LH0XQGzQi3rM';
+
+  const STAGE_INFO = {
+    2: { name: 'Task 1',        desc: 'Find where one ends and another starts — photo upload' },
+    3: { name: 'Task 2',        desc: 'Find where blue meets blue — photo upload' },
+    4: { name: 'Task 3',        desc: 'Find your moving reflection — photo upload' },
+    5: { name: 'Guess',         desc: 'Player guesses what connects the three tasks' },
+    6: { name: 'Escape Room',   desc: 'Manually unlock the escape room after correct guess' },
+  };
+
+  const headers = {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+  };
+
+  function setStatus(msg, type = '') {
+    const el = document.getElementById('status-msg');
+    el.textContent = msg;
+    el.className = 'status-bar' + (type ? ' ' + type : '');
+  }
+
+  async function fetchStages() {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/stages?select=*&order=stage_number.asc`, { headers });
+    if (!res.ok) throw new Error('Fetch failed');
+    return res.json();
+  }
+
+  async function updateStage(stageNumber, patch) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/stages?stage_number=eq.${stageNumber}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) throw new Error('Update failed');
+  }
+
+  function badgeHtml(row) {
+    if (row.approved) return '<span class="stage-badge badge-approved">Approved</span>';
+    if (row.failed)   return '<span class="stage-badge badge-failed">Failed</span>';
+    return '<span class="stage-badge badge-pending">Pending</span>';
+  }
+
+  function render(stages) {
+    const byNum = {};
+    stages.forEach(s => byNum[s.stage_number] = s);
+
+    const container = document.getElementById('cards');
+    container.innerHTML = '';
+
+    [2, 3, 4, 5, 6].forEach(num => {
+      const row = byNum[num] || { stage_number: num, approved: false, failed: false };
+      const info = STAGE_INFO[num];
+      const done = row.approved || row.failed;
+
+      const card = document.createElement('div');
+      card.className = 'stage-card' + (done ? ' done' : '');
+      card.innerHTML = `
+        <div class="stage-header">
+          <span class="stage-name">${info.name}</span>
+          ${badgeHtml(row)}
+        </div>
+        <div class="stage-desc">${info.desc}</div>
+        <div class="btn-row">
+          <button class="btn btn-approve" data-num="${num}" data-action="approve" ${row.approved ? 'disabled' : ''}>✓ Approve</button>
+          <button class="btn btn-fail"    data-num="${num}" data-action="fail"    ${row.failed   ? 'disabled' : ''}>✗ Fail</button>
+          <button class="btn btn-reset"   data-num="${num}" data-action="reset"   ${!done        ? 'disabled' : ''}>↺ Reset</button>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+
+    // Wire buttons
+    container.querySelectorAll('.btn[data-action]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const num    = parseInt(btn.dataset.num);
+        const action = btn.dataset.action;
+        const patch  = action === 'approve' ? { approved: true,  failed: false }
+                     : action === 'fail'    ? { approved: false, failed: true  }
+                     :                        { approved: false, failed: false };
+        btn.disabled = true;
+        setStatus('Saving · · ·');
+        try {
+          await updateStage(num, patch);
+          setStatus('Saved ✓', 'ok');
+          await load();
+        } catch (e) {
+          setStatus('Error — ' + e.message, 'error');
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  async function load() {
+    try {
+      const stages = await fetchStages();
+      render(stages);
+      setStatus('');
+    } catch (e) {
+      document.getElementById('cards').innerHTML = '<div class="status-bar error">Could not load stages</div>';
+      setStatus(e.message, 'error');
+    }
+  }
+
+  document.getElementById('refresh-btn').addEventListener('click', () => {
+    setStatus('Refreshing · · ·');
+    load();
+  });
+
+  load();
+</script>
+</body>
+</html>

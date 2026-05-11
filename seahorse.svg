@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" width="200" height="300">
+  
+  
+  <path d="M 115 55 Q 145 50 148 60 Q 145 70 115 68" fill="#e8a94d" stroke="#c47a20" stroke-width="1.5"></path>
+  
+  <circle cx="118" cy="62" r="6" fill="#1a1a2e" stroke="#c47a20" stroke-width="1"></circle>
+  <circle cx="120" cy="60" r="2" fill="white"></circle>
+  
+  <ellipse cx="105" cy="72" rx="18" ry="22" fill="#e8a94d" stroke="#c47a20" stroke-width="1.5"></ellipse>
+  
+  <line x1="100" y1="52" x2="96" y2="40" stroke="#c47a20" stroke-width="2" stroke-linecap="round"></line>
+  <line x1="107" y1="50" x2="105" y2="37" stroke="#c47a20" stroke-width="2" stroke-linecap="round"></line>
+  <line x1="114" y1="53" x2="114" y2="40" stroke="#c47a20" stroke-width="2" stroke-linecap="round"></line>
+  
+  <path d="M 95 90 Q 85 100 88 112" fill="none" stroke="#e8a94d" stroke-width="18" stroke-linecap="round"></path>
+  <path d="M 95 90 Q 85 100 88 112" fill="none" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  
+  <path d="M 88 112 Q 110 115 112 135 Q 114 155 100 168 Q 86 181 82 200 Q 80 215 90 225" fill="none" stroke="#e8a94d" stroke-width="28" stroke-linecap="round"></path>
+  
+  <path d="M 88 112 Q 110 115 112 135 Q 114 155 100 168 Q 86 181 82 200 Q 80 215 90 225" fill="none" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  
+  <path d="M 98 118 L 108 112" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  <path d="M 103 128 L 113 124" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  <path d="M 105 140 L 115 138" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  <path d="M 102 152 L 111 152" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  <path d="M 95 164 L 103 167" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  <path d="M 87 176 L 95 181" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  <path d="M 82 190 L 90 196" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  <path d="M 83 203 L 91 210" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  
+  <path d="M 90 225 Q 110 238 108 252 Q 106 265 92 265 Q 78 265 76 252 Q 74 242 86 240" fill="none" stroke="#e8a94d" stroke-width="14" stroke-linecap="round"></path>
+  <path d="M 90 225 Q 110 238 108 252 Q 106 265 92 265 Q 78 265 76 252 Q 74 242 86 240" fill="none" stroke="#c47a20" stroke-width="1.5" stroke-linecap="round"></path>
+  
+  <path d="M 95 115 Q 125 108 128 118 Q 125 128 95 128" fill="#f0c070" stroke="#c47a20" stroke-width="1" opacity="0.8"></path>
+  
+  <line x1="102" y1="115" x2="108" y2="128" stroke="#c47a20" stroke-width="0.8" opacity="0.6"></line>
+  <line x1="110" y1="112" x2="114" y2="126" stroke="#c47a20" stroke-width="0.8" opacity="0.6"></line>
+  <line x1="118" y1="113" x2="120" y2="125" stroke="#c47a20" stroke-width="0.8" opacity="0.6"></line>
+  
+  <ellipse cx="94" cy="102" rx="12" ry="7" fill="#f0c070" stroke="#c47a20" stroke-width="1" transform="rotate(-30 94 102)" opacity="0.8"></ellipse>
+</svg>
