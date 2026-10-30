@@ -1,12 +1,12 @@
 # Birthday Escape Room
 
-A personalised multi-stage birthday experience — a scuba diving themed escape room delivered entirely via a single URL. Built as a surprise for a birthday in Alicante, Spain.
+A personalised multi-stage birthday experience — a scuba diving themed escape room delivered entirely via a single URL. 
 
 ---
 
 ## Concept
 
-The player progresses through a series of real-world and digital puzzle stages over several days, culminating in an underwater-themed digital escape room on the birthday itself. Each stage unlocks the next via an admin panel.
+The player progresses through a series of real-world and digital puzzle stages over several days, culminating in an underwater-themed digital escape room. Each stage unlocks the next via an admin panel.
 
 ---
 
