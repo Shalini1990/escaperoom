@@ -1,4 +1,4 @@
-# Birthday Escape Room
+# Digital Escape Room
 
 A personalised multi-stage birthday experience — a scuba diving themed escape room delivered entirely via a single URL. 
 
